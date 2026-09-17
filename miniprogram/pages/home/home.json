@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "pin-pad": "/components/pin-pad/pin-pad",
+    "day-sheet": "/components/day-sheet/day-sheet"
+  },
+  "navigationBarTitleText": "小雨记"
+}

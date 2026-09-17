@@ -1,0 +1,9 @@
+{
+  "name": "unlockParent",
+  "version": "1.0.0",
+  "description": "小雨记云函数 - unlockParent",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

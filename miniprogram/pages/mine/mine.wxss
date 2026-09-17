@@ -1,0 +1,23 @@
+/* pages/mine —— 页面专属样式；通用类（me-card/me-row/child-pick/field/ico-btn…）在 app.wxss */
+
+.me-ic.on { color: var(--coral); }
+.me-row .ar.code { font-size: 25rpx; letter-spacing: 2rpx; }
+.mt { margin-top: 17rpx; }
+
+.help-item {
+  font-size: 28rpx; color: var(--ink);
+  line-height: 1.7; margin-bottom: 17rpx;
+}
+.m-close {
+  text-align: center; color: var(--ink-soft);
+  font-size: 29rpx; padding: 23rpx 0 6rpx;
+}
+
+.about { text-align: center; }
+.ab-emoji { font-size: 115rpx; line-height: 1.2; }
+.ab-ver { font-size: 27rpx; color: var(--ink-soft); margin-bottom: 19rpx; }
+.ab-desc { font-size: 28rpx; color: var(--ink); line-height: 1.7; text-align: left; }
+
+.edit-err { font-size: 25rpx; color: var(--coral); margin: 15rpx 0; text-align: center; }
+.edit-err + .ed-actions { margin-top: 19rpx; }
+.ed-actions { margin-top: 31rpx; }

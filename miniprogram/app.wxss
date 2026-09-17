@@ -1,0 +1,475 @@
+/* app.wxss —— 小雨记全局样式
+   视觉唯一基线：design-小雨记-UI.html（清新糖果调色板，CSS 变量驱动，不得自行改配色）
+
+   【度量换算】设计稿以 390px 宽的 iPhone 框为基准，小程序 750rpx = 屏宽
+   ⇒ 1px ≈ 1.923rpx。下方所有 rpx 值均由设计稿 px 换算而来，例如：
+      .hero 大星星数字 46px → 88rpx ；底部 tab 文字 11px → 21rpx（放宽到 24rpx）
+      卡片圆角 26px → 50rpx ；左右内边距 14px → 27rpx
+*/
+
+page {
+  /* —— 糖果调色板（设计基线，唯一口径） —— */
+  --sky: #BFeaff;          /* 天蓝 */
+  --sky-deep: #7Fd3ff;     /* 天蓝深 */
+  --mint: #C8F5DD;         /* 薄荷 */
+  --peach: #FFD9C7;        /* 蜜桃 */
+  --sun: #FFE6A0;          /* 暖阳 */
+  --star: #FFC93C;         /* 星星金 */
+  --coral: #FF9AA2;        /* 珊瑚 */
+  --lav: #DDD0FF;          /* 薰衣草 */
+
+  --ink: #5A5470;          /* 柔和墨（主文字） */
+  --ink-soft: #8C86A3;     /* 次级文字 */
+  --card: #FFFFFF;         /* 卡片底 */
+  --line: #FFEAF0;         /* 分隔线 */
+  --ok: #5FD08A;           /* 完成绿 */
+  --lock: #a9a2ba;         /* 闭锁灰 */
+  --track: #efeaf6;        /* 子页签轨道 */
+
+  --r: 50rpx;              /* 主圆角 26px */
+  --r-md: 35rpx;           /* 列表卡圆角 18px */
+  --r-sm: 31rpx;           /* 小圆角 16px */
+  --shadow: 0 19rpx 46rpx rgba(140, 130, 170, .18);
+  --shadow-sm: 0 8rpx 23rpx rgba(140, 130, 170, .14);
+
+  background:
+    radial-gradient(1200rpx 600rpx at 12% -4%, var(--sky) 0%, transparent 55%),
+    radial-gradient(1000rpx 560rpx at 96% 6%, var(--peach) 0%, transparent 52%),
+    radial-gradient(1100rpx 700rpx at 50% 108%, var(--mint) 0%, transparent 55%),
+    linear-gradient(160deg, #f3fbff 0%, #fdf3ff 50%, #f3fff7 100%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: 'ZCOOL KuaiLe', 'Baloo 2', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 31rpx;
+  min-height: 100vh;
+}
+
+view, text, button, input, scroll-view { box-sizing: border-box; }
+
+/* 页面容器：底部须让开自定义 tabBar（142rpx）与安全区 */
+.page {
+  padding: 24rpx 30rpx calc(200rpx + env(safe-area-inset-bottom));
+}
+
+/* ==================== 顶部孩子条 ==================== */
+.kidbar {
+  display: flex; align-items: center; gap: 20rpx;
+  background: linear-gradient(120deg, var(--sky), var(--mint));
+  border-radius: var(--r);
+  padding: 23rpx 27rpx;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.kid-ava {
+  width: 88rpx; height: 88rpx; border-radius: 50%; flex: 0 0 88rpx;
+  background: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 54rpx; box-shadow: var(--shadow-sm);
+}
+.kid-meta { line-height: 1.25; flex: 1; min-width: 0; }
+.kid-name { font-size: 37rpx; color: #3f5a72; }
+.kid-sub { font-size: 23rpx; color: #5e7e96; }
+
+/* 家长模式锁状态（纯图标开关，无背景无文字） */
+.lock-status {
+  flex: 0 0 auto; color: var(--lock);
+  padding: 17rpx; margin: -17rpx -17rpx -17rpx auto;
+  border-radius: 50%; transition: color .25s ease, transform .15s ease;
+}
+.lock-status.open { color: var(--coral); }
+.lock-status:active { transform: scale(.88); }
+.lock-status .lk-ico { font-size: 42rpx; line-height: 1; display: block; }
+
+/* ==================== 英雄卡 ==================== */
+.hero {
+  margin-top: 50rpx;
+  background: linear-gradient(135deg, #fff6d8, #ffe9ef);
+  border-radius: var(--r);
+  padding: 31rpx;
+  box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+}
+.hero .blob { position: absolute; border-radius: 50%; opacity: .6; }
+.hero .b1 { width: 173rpx; height: 173rpx; background: var(--sun); right: -38rpx; top: -50rpx; }
+.hero .b2 { width: 115rpx; height: 115rpx; background: var(--coral); left: -35rpx; bottom: -42rpx; opacity: .4; }
+
+.starbig { display: flex; align-items: flex-end; gap: 15rpx; position: relative; }
+.starbig .spk { font-size: 65rpx; line-height: 1; animation: bob 2.4s ease-in-out infinite; }
+.starbig .num {
+  font-size: 88rpx; font-weight: 800; color: var(--star); line-height: 1;
+  text-shadow: 0 6rpx 0 #fff, 0 12rpx 19rpx rgba(255, 201, 60, .4);
+}
+.starbig .unit { font-size: 35rpx; color: #c79a2e; margin-bottom: 12rpx; }
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-12rpx) rotate(3deg); }
+}
+
+.hero-sub { display: flex; align-items: center; gap: 19rpx; margin-top: 23rpx; position: relative; }
+.levels { display: flex; gap: 6rpx; font-size: 38rpx; flex: 0 0 auto; }
+.levels text { opacity: .3; transition: opacity .3s ease; }
+.levels text.on { opacity: 1; animation: pop .4s ease; }
+@keyframes pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.streak {
+  display: inline-flex; align-items: center; gap: 10rpx;
+  background: #fff; border-radius: 999rpx;
+  padding: 10rpx 23rpx;
+  font-size: 27rpx; font-weight: 700; color: #e8762f;
+  box-shadow: 0 6rpx 15rpx rgba(232, 118, 47, .18);
+  white-space: nowrap;
+}
+.hero-sub .streak { margin-left: auto; }
+.streak .fl { animation: flick 1.6s ease-in-out infinite; }
+@keyframes flick {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2) rotate(-4deg); }
+}
+
+/* ==================== 统计小条 ==================== */
+.stats { display: flex; gap: 19rpx; margin-top: 27rpx; }
+.stat {
+  flex: 1; background: #fff; border-radius: 35rpx;
+  padding: 23rpx 15rpx; text-align: center; box-shadow: var(--shadow-sm);
+}
+.stat .v { font-size: 42rpx; font-weight: 800; color: var(--ink); line-height: 1.2; }
+.stat .k { font-size: 23rpx; color: var(--ink-soft); margin-top: 4rpx; }
+
+/* ==================== 段标题 ==================== */
+.sec-title {
+  display: flex; align-items: center; gap: 15rpx;
+  margin: 38rpx 8rpx 19rpx;
+  font-size: 33rpx; color: var(--ink);
+}
+.sec-title .em { font-size: 38rpx; }
+
+/* ==================== 子页签 ==================== */
+.subtabs {
+  display: flex; gap: 12rpx;
+  background: var(--track);
+  border-radius: 999rpx;
+  padding: 10rpx;
+  box-shadow: var(--shadow-sm);
+  margin: 23rpx 0;
+}
+.subtab {
+  flex: 1; text-align: center;
+  padding: 15rpx 0;
+  border-radius: 999rpx;
+  font-size: 29rpx; color: var(--ink-soft);
+  transition: all .25s ease;
+}
+.subtab.active {
+  background: linear-gradient(135deg, var(--sky), var(--mint));
+  color: #3f5a72;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==================== 日历 ==================== */
+.cal { background: #fff; border-radius: var(--r); padding: 27rpx; box-shadow: var(--shadow); }
+.cal-h {
+  display: flex; align-items: center; justify-content: space-between;
+  color: var(--ink); margin-bottom: 19rpx; font-size: 31rpx; font-weight: 700;
+}
+.cal-tip-sm { font-size: 23rpx; color: var(--ink-soft); font-weight: 400; }
+.cal-week { display: flex; margin-bottom: 6rpx; }
+.cal-week text {
+  width: 14.28%; text-align: center;
+  font-size: 21rpx; color: var(--ink-soft); font-weight: 700;
+}
+.cal-grid { display: flex; flex-wrap: wrap; }
+.day {
+  width: 14.28%; height: 78rpx;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; font-size: 25rpx; font-weight: 700; color: var(--ink-soft);
+  border-radius: 23rpx;
+}
+.day.blank { visibility: hidden; }
+.day.lit {
+  background: linear-gradient(135deg, var(--sky-deep), var(--mint));
+  color: #fff;
+  box-shadow: 0 8rpx 19rpx rgba(127, 211, 255, .5);
+}
+.day.lit:active { transform: scale(.92); }
+.day.lit .tick {
+  position: absolute; top: -4rpx; right: -4rpx;
+  width: 29rpx; height: 29rpx; border-radius: 50%;
+  background: #fff; color: var(--ok); font-size: 19rpx; line-height: 29rpx; text-align: center;
+  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, .12);
+}
+.day.today { box-shadow: 0 0 0 6rpx var(--coral); }
+.cal-tip { text-align: center; font-size: 23rpx; color: #b9b2c9; margin-top: 19rpx; }
+
+/* ==================== 列表卡片（任务 / 奖励通用） ==================== */
+.item {
+  display: flex; align-items: center; gap: 23rpx;
+  background: #fff; border-radius: var(--r-md);
+  padding: 23rpx 27rpx; margin-bottom: 19rpx;
+  box-shadow: var(--shadow-sm);
+  transition: transform .15s ease;
+}
+.item:active { transform: scale(.98); }
+.item .ic {
+  width: 85rpx; height: 85rpx; flex: 0 0 85rpx; border-radius: 27rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46rpx;
+  background: linear-gradient(135deg, var(--sun), var(--peach));
+}
+.item.reward .ic { background: linear-gradient(135deg, var(--lav), var(--sky)); }
+.item .body { flex: 1; min-width: 0; }
+.item .nm { font-size: 31rpx; color: var(--ink); }
+.item .ds {
+  font-size: 23rpx; color: var(--ink-soft); margin-top: 4rpx;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx;
+}
+.item .tail { display: flex; align-items: center; gap: 10rpx; flex: 0 0 auto; }
+
+/* 优先级旗子（设计稿用纯 CSS 画，不用 emoji） */
+.flag { display: inline-block; width: 31rpx; height: 27rpx; position: relative; }
+.flag::before {
+  content: ''; position: absolute; left: 0; top: 0;
+  width: 4rpx; height: 27rpx; background: #b0a8c0; border-radius: 2rpx;
+}
+.flag::after {
+  content: ''; position: absolute; left: 4rpx; top: 0;
+  width: 0; height: 0;
+  border-top: 10rpx solid transparent;
+  border-bottom: 10rpx solid transparent;
+  border-left: 19rpx solid currentColor;
+}
+.flag.p-high { color: #ff5a5a; }
+.flag.p-mid { color: #ffc107; }
+.flag.p-low { color: #5fd08a; }
+
+/* 奖励标签 / 花费 */
+.tag {
+  font-size: 21rpx; padding: 4rpx 15rpx; border-radius: 999rpx; font-weight: 700;
+}
+.tag.reward { background: var(--mint); color: #2f8f5e; }
+.tag.punish { background: #ffd9d9; color: #d05a5a; }
+.cost {
+  display: flex; align-items: center; gap: 6rpx;
+  font-size: 31rpx; font-weight: 800; color: var(--star);
+}
+.cost .s { font-size: 29rpx; }
+
+/* 删除按钮（仅家长模式） */
+.row-del {
+  width: 58rpx; height: 58rpx; flex: 0 0 58rpx;
+  border-radius: 50%; text-align: center; line-height: 54rpx;
+  color: #c9c2d8; font-size: 42rpx; background: #f7f4fb;
+}
+
+/* 注：圆形勾选控件 .chk 由 day-sheet 组件自带（该组件 apply-shared，此处不再重复定义以免覆盖） */
+
+/* ==================== 空态 ==================== */
+.empty {
+  text-align: center; padding: 70rpx 0 40rpx;
+  color: #b9b2c9; font-size: 28rpx;
+}
+.empty-emo { font-size: 96rpx; display: block; margin-bottom: 19rpx; }
+.empty-btn {
+  display: inline-block; margin-top: 27rpx;
+  padding: 19rpx 50rpx; border-radius: 999rpx;
+  font-size: 29rpx; color: #fff;
+  background: linear-gradient(135deg, var(--coral), var(--sun));
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==================== 按钮 ==================== */
+.btn {
+  border: none; border-radius: 31rpx;
+  padding: 27rpx 40rpx;
+  font-size: 33rpx; color: #fff;
+  background: linear-gradient(135deg, var(--coral), var(--sun));
+  box-shadow: var(--shadow);
+}
+.btn::after { border: none; }
+.btn-ghost {
+  background: #fff; color: var(--ink-soft);
+  border: 4rpx solid var(--line);
+  box-shadow: none;
+}
+.btn-coral { background: linear-gradient(135deg, #ff8f98, var(--coral)); }
+.btn[disabled] { opacity: .45; }
+
+/* 图标字段（设计稿 .ico-btn）：默认只显示当前图标，点击弹出选择控件 */
+.ico-btn {
+  display: flex; align-items: center; gap: 19rpx; width: 100%;
+  border: 4rpx solid var(--line); background: #fffafd;
+  border-radius: 27rpx; padding: 13rpx 23rpx 13rpx 13rpx;
+}
+.ico-btn:active { transform: scale(.99); }
+.ico-btn .ico-cur {
+  width: 81rpx; height: 81rpx; flex: 0 0 81rpx; border-radius: 23rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx;
+  background: linear-gradient(135deg, var(--sun), var(--peach));
+}
+.ico-btn .ico-tip { font-size: 25rpx; color: var(--ink-soft); }
+.ico-btn .ico-caret { margin-left: auto; font-size: 21rpx; color: #bdb7cc; }
+
+/* 分段选择（设计稿 .seg）：用于类型 / 优先级 / 是否等二选一以上 */
+.seg { display: flex; gap: 12rpx; flex: 1; flex-wrap: wrap; }
+.seg .seg-i {
+  flex: 1; min-width: 110rpx; text-align: center;
+  padding: 17rpx 10rpx; border-radius: 23rpx;
+  font-size: 25rpx; color: var(--ink-soft);
+  background: #fffafd; border: 4rpx solid var(--line);
+}
+.seg .seg-i.on {
+  background: linear-gradient(135deg, var(--sky), var(--mint));
+  color: #3f5a72; border-color: transparent;
+}
+
+/* ==================== 浮动新建按钮 ==================== */
+/* 抬到自定义 tabBar（142rpx）之上；设计稿 bottom 92px → 177rpx，此处按 tabBar 实际高度取 210rpx */
+.fab {
+  position: fixed;
+  right: 35rpx;
+  bottom: calc(210rpx + env(safe-area-inset-bottom));
+  z-index: 95;   /* 高于自定义 tabBar(90)，低于一切弹层 */
+  width: 112rpx; height: 112rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--coral), var(--sun));
+  color: #fff; font-size: 58rpx; line-height: 1;
+  box-shadow: 0 15rpx 38rpx rgba(255, 154, 162, .55);
+}
+.fab:active { transform: scale(.92); }
+
+/* ==================== 遮罩 / 弹层 ==================== */
+/* 层级约定（页面弹层必须高于自定义 tabBar 的 90，否则会被底部导航盖住）：
+   fab 95 ＜ 页面弹层 200 ＜ day-sheet 300 ＜ emoji-picker 400 ＜ pin-pad 500 */
+/* 交互约定（弹层关闭）：
+   .mask 上绑 bindtap="关闭方法"，.sheet 上绑 catchtap="noop"
+   → 点弹层外的空白处关闭、点弹层内部不关闭。
+   注意：绝不要在 .mask 上写 catchtap —— 那会把蒙层的点击一并吞掉，
+   导致「点哪儿都关不掉」（本项目已踩过这个坑）。 */
+.mask {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(90, 84, 112, .35);
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet {
+  width: 88%; max-height: 78vh; overflow: auto;
+  background: #fff; border-radius: var(--r);
+  padding: 35rpx;
+  box-shadow: var(--shadow);
+}
+.sheet-h {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 23rpx;
+}
+.sheet-h .sh-t { font-size: 37rpx; color: var(--ink); }
+.sheet-h.center { justify-content: center; }
+
+/* 弹层右上角关闭按钮：表单类弹层（新建/编辑）必须带一个。
+   只有底部「保存」时，用户会以为无法取消新增（真机反馈过）。 */
+.sheet-x {
+  width: 56rpx; height: 56rpx; flex: 0 0 56rpx;
+  border-radius: 50%; background: #f4f0fa;
+  color: #a79fbd; font-size: 34rpx;
+  line-height: 56rpx; text-align: center;
+}
+.sheet-x:active { transform: scale(.88); background: #ebe4f7; }
+
+/* 弹层底部按钮组 */
+.ed-actions { display: flex; gap: 19rpx; }
+.ed-actions .btn { flex: 1; }
+
+/* 表单字段 */
+.field { margin-bottom: 23rpx; }
+.field .lab {
+  display: block; font-size: 25rpx; color: var(--ink-soft);
+  margin-bottom: 10rpx; font-weight: 700;
+}
+.field-row { display: flex; align-items: center; gap: 19rpx; }
+/* 注意：小程序 <input> 自带固定 height，若只用上下 padding 撑高，在 box-sizing:border-box
+   下内容区会被压扁 → 文字只露一半。必须显式给 height + line-height，padding 只留左右。 */
+.inp {
+  flex: 1; width: 100%;
+  height: 88rpx; line-height: 88rpx;
+  border: 4rpx solid var(--line); border-radius: 27rpx;
+  padding: 0 23rpx;
+  font-size: 29rpx; color: var(--ink);
+  background: #fffafd;
+}
+.inp.tiny {
+  flex: none; width: 180rpx;
+  text-align: center; padding: 0 12rpx;
+}
+.field-tip { display: block; font-size: 23rpx; color: var(--ink-soft); margin-top: 12rpx; line-height: 1.5; }
+
+/* 星星数量：手动录入的数字框。窄框 + 居中，比全宽输入框更像「填一个数量」。
+   继承 .inp 的显式 height/line-height（见上方注释：<input> 自带固定高度）。 */
+.inp.num {
+  flex: none; width: 220rpx;
+  text-align: center; padding: 0 16rpx;
+  font-size: 33rpx; font-weight: 700; color: var(--star);
+}
+
+/* ==================== 我的页 ==================== */
+.me-card {
+  display: flex; align-items: center; gap: 23rpx;
+  background: linear-gradient(135deg, var(--lav), var(--sky));
+  border-radius: var(--r); padding: 31rpx;
+  box-shadow: var(--shadow);
+}
+.me-card .kid-ava { width: 104rpx; height: 104rpx; flex: 0 0 104rpx; font-size: 62rpx; }
+
+.me-list { margin-top: 27rpx; }
+.me-row {
+  display: flex; align-items: center; gap: 23rpx;
+  background: #fff; border-radius: var(--r-sm);
+  padding: 25rpx 27rpx; margin-bottom: 17rpx;
+  box-shadow: var(--shadow-sm);
+}
+.me-row:active { transform: scale(.985); }
+.me-row .me-ic { font-size: 42rpx; flex: 0 0 auto; line-height: 1; }
+.me-row .me-tx { flex: 1; font-size: 29rpx; color: var(--ink); }
+.me-row .me-sub { font-size: 23rpx; color: var(--ink-soft); margin-top: 4rpx; }
+.me-row .ar { color: var(--ink-soft); font-size: 38rpx; flex: 0 0 auto; }
+
+/* 孩子选择（横排头像卡） */
+.child-pick { display: flex; gap: 15rpx; margin-top: 19rpx; }
+.child-pick .cp {
+  flex: 1; background: #fff; border-radius: 27rpx;
+  padding: 15rpx; text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 4rpx solid transparent;
+}
+.child-pick .cp.on { border-color: var(--coral); }
+.child-pick .cp .ce { font-size: 50rpx; }
+.child-pick .cp .cn { font-size: 23rpx; margin-top: 4rpx; color: var(--ink); }
+
+/* ==================== 杂项 ==================== */
+.hint {
+  text-align: center; font-size: 23rpx; color: var(--ink-soft);
+  margin-top: 35rpx; line-height: 1.6;
+}
+.foot-tip { text-align: center; font-size: 22rpx; color: #c3bcd2; margin-top: 38rpx; }
+
+/* 入场 stagger */
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateY(14rpx) scale(.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stagger > view { animation: pop-in .42s ease both; }
+.stagger > view:nth-child(2) { animation-delay: .05s; }
+.stagger > view:nth-child(3) { animation-delay: .1s; }
+.stagger > view:nth-child(4) { animation-delay: .15s; }
+.stagger > view:nth-child(5) { animation-delay: .2s; }
+
+/* 撒花层 */
+.confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
+.confetti-piece {
+  position: absolute; top: -20rpx; width: 19rpx; height: 27rpx; border-radius: 6rpx;
+  animation: fall 1.6s ease-in forwards;
+}
+@keyframes fall {
+  0% { transform: translateY(-20rpx) rotate(0); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+}

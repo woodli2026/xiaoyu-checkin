@@ -1,0 +1,41 @@
+/* 视觉基线：design-小雨记-UI.html 的 .tabbar / .tab
+   设计稿基准 390px 宽 → 1px ≈ 1.923rpx：
+   tabbar 高 74px → 142rpx；emoji 24px → 46rpx；文字 11px → 21rpx（此处放宽到 24rpx 以提升可读性） */
+
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  /* 层级须低于页面弹层（mask 200），否则弹层底部按钮会被导航盖住 */
+  z-index: 90;
+  height: 142rpx;
+  box-sizing: content-box;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  background: rgba(255, 255, 255, .94);
+  border-radius: 50rpx 50rpx 0 0;
+  box-shadow: 0 -12rpx 34rpx rgba(140, 130, 170, .12);
+}
+
+/* 弹层打开时隐藏：页面内 z-index 压不住自定义 tabBar，只能由页面主动关掉 */
+.tabbar.is-hidden { display: none; }
+
+.tab {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6rpx;
+  color: var(--ink-soft, #8C86A3);
+  font-size: 24rpx;
+  transition: color .2s ease;
+}
+.tab:active { opacity: .7; }
+
+.tab .te {
+  font-size: 46rpx;
+  line-height: 1;
+  transition: transform .25s ease;
+}
+.tab .tl { line-height: 1.1; }
+
+.tab.on { color: var(--coral, #FF9AA2); }
+.tab.on .te { transform: translateY(-6rpx) scale(1.12); }

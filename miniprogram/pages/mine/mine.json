@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "pin-pad": "/components/pin-pad/pin-pad",
+    "emoji-picker": "/components/emoji-picker/emoji-picker"
+  },
+  "navigationBarTitleText": "我"
+}

@@ -1,0 +1,144 @@
+<view class="page">
+  <!-- 顶部孩子条：头像 + 昵称 + 副标题 + 右上角家长模式锁图标 -->
+  <view class="kidbar">
+    <view class="kid-ava">{{child.avatar}}</view>
+    <view class="kid-meta">
+      <view class="kid-name">{{child.name}}</view>
+      <view class="kid-sub">{{subTab === 'checkin' ? '今天也要加油哦～' : '我的奖励小超市'}}</view>
+    </view>
+    <view class="lock-status {{mode === 'parent' ? 'open' : ''}}" bindtap="toggleParent"
+          aria-label="{{mode === 'parent' ? '点击关闭家长模式' : '点击开启家长模式'}}">
+      <text class="lk-ico">{{mode === 'parent' ? '🔓' : '🔒'}}</text>
+    </view>
+  </view>
+
+  <!-- 子页签：⭐打卡 / 🎁兑换 -->
+  <view class="subtabs">
+    <view class="subtab {{subTab === 'checkin' ? 'active' : ''}}" data-tab="checkin" bindtap="switchSub">⭐ 打卡</view>
+    <view class="subtab {{subTab === 'redeem' ? 'active' : ''}}" data-tab="redeem" bindtap="switchSub">🎁 兑换</view>
+  </view>
+
+  <!-- ============ 打卡页签 ============ -->
+  <block wx:if="{{subTab === 'checkin'}}">
+    <view class="hero">
+      <view class="blob b1"></view>
+      <view class="blob b2"></view>
+      <view class="starbig">
+        <text class="spk">⭐</text>
+        <text class="num">{{totalStars}}</text>
+        <text class="unit">颗星星</text>
+      </view>
+      <view class="hero-sub">
+        <view class="levels">
+          <text wx:for="{{levelStars}}" wx:key="*this" class="{{item <= level ? 'on' : ''}}">⭐</text>
+        </view>
+        <view class="streak"><text class="fl">🔥</text>{{streak}} 天连续打卡</view>
+      </view>
+    </view>
+
+    <!-- 统计小条：今日完成 / 坚持小能手 / 本月打卡 -->
+    <view class="stats">
+      <view class="stat"><view class="v">{{todayDone}}/{{todayTotal}}</view><view class="k">今日完成</view></view>
+      <view class="stat"><view class="v">🏆</view><view class="k">坚持小能手</view></view>
+      <view class="stat"><view class="v">{{monthCount}}</view><view class="k">本月打卡</view></view>
+    </view>
+
+    <view class="sec-title"><text class="em">📅</text>{{calendar.label}}打卡日历</view>
+    <view class="cal">
+      <view class="cal-h">
+        <text>{{calendar.label}}</text>
+        <text class="cal-tip-sm">点日期看任务</text>
+      </view>
+      <view class="cal-week">
+        <text>日</text><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text>
+      </view>
+      <view class="cal-grid">
+        <block wx:for="{{calendar.cells}}" wx:key="key">
+          <view wx:if="{{item.blank}}" class="day blank"></view>
+          <view wx:else class="day {{item.lit ? 'lit' : ''}} {{item.today ? 'today' : ''}}"
+                data-date="{{item.date}}" bindtap="openDay">
+            <text>{{item.day}}</text>
+            <text wx:if="{{item.lit}}" class="tick">✓</text>
+          </view>
+        </block>
+      </view>
+      <view class="cal-tip">点击日期查看当天任务明细{{mode === 'parent' ? '' : '（展示模式只读）'}}</view>
+    </view>
+  </block>
+
+  <!-- ============ 兑换页签 ============ -->
+  <block wx:else>
+    <view class="hero hero-redeem">
+      <view class="blob b1"></view>
+      <view class="starbig">
+        <text class="spk">🛍️</text>
+        <text class="num">{{totalStars}}</text>
+        <text class="unit">颗星星可兑换</text>
+      </view>
+      <view class="streak streak-green">💝 攒星星换喜欢的好礼</view>
+    </view>
+
+    <view class="sec-title"><text class="em">🎁</text>奖励货架</view>
+
+    <view wx:if="{{rewards.length === 0}}" class="empty">
+      <text class="empty-emo">🎁</text>
+      还没有奖励，去「任务与奖励」添加吧～
+    </view>
+
+    <view wx:for="{{rewards}}" wx:key="_id" class="item reward"
+          data-id="{{item._id}}" bindtap="openRedeem">
+      <view class="ic">{{item.icon}}</view>
+      <view class="body">
+        <view class="nm">{{item.title}}</view>
+        <view class="ds">
+          <text class="tag {{item.category === 'punish' ? 'punish' : 'reward'}}">{{item.category === 'punish' ? '惩罚' : '奖励'}}</text>
+          <text wx:if="{{!item.resetAfterRedeem}}" class="tag {{item.redeemed ? 'punish' : 'reward'}}">{{item.redeemed ? '已兑换' : '仅一次'}}</text>
+        </view>
+      </view>
+      <view class="cost"><text class="s">⭐</text>{{item.cost}}</view>
+    </view>
+
+    <view class="hint">{{mode === 'parent' ? '家长模式：点击奖励即可兑换' : '展示模式下仅可浏览奖励 · 兑换需家长模式'}}</view>
+  </block>
+
+  <view class="foot-tip">{{useCloud ? '云端模式' : '本地模式（未配置云环境，数据存本机）'}}</view>
+</view>
+
+<!-- 日明细弹层 -->
+<day-sheet show="{{showDay}}" title="{{dayTitle}}" todo="{{dayTodo}}" done="{{dayDone}}"
+           mode="{{mode}}" bind:pick="onDayPick" bind:close="onDayClose" />
+
+<!-- 家长模式 PIN 闸 -->
+<pin-pad show="{{showPin}}" error="{{pinError}}" attempt="{{pinAttempt}}"
+         forgotText="忘记 PIN？恢复默认"
+         bind:complete="onPinComplete" bind:close="onPinClose" bind:forgot="onPinForgot" />
+
+<!-- 兑换确认 -->
+<view wx:if="{{showRedeem}}" class="mask">
+  <view class="sheet redeem-sheet">
+    <view class="rd-emoji">{{redeemTarget.icon}}</view>
+    <view class="rd-title">兑换「{{redeemTarget.title}}」？</view>
+    <view class="rd-cost">需 ⭐ {{redeemTarget.cost}} · 当前持有 {{totalStars}} 颗</view>
+    <button class="btn rd-btn" bindtap="confirmRedeem">确认兑换 🎉</button>
+    <button class="btn btn-ghost rd-btn" bindtap="onRedeemClose">再想想</button>
+  </view>
+</view>
+
+<!-- 隐私协议（首次启动） -->
+<view wx:if="{{showPrivacy}}" class="mask">
+  <view class="sheet privacy">
+    <view class="pv-title">欢迎使用小雨记 🌧️</view>
+    <view class="pv-body">
+      为保障孩子的使用安全，我们仅收集必要的微信身份标识（openid）用于区分账号，
+      不采集与产品功能无关的个人信息。打卡、星星与奖励数据用于为你提供习惯养成服务。
+      继续使用即表示你已阅读并同意《隐私保护指引》。
+    </view>
+    <button class="btn pv-btn" bindtap="agreePrivacy">同意并继续</button>
+  </view>
+</view>
+
+<!-- 撒花层 -->
+<view class="confetti-layer">
+  <view wx:for="{{confetti}}" wx:key="id" class="confetti-piece"
+        style="left:{{item.left}}%;background:{{item.color}};animation-delay:{{item.delay}}s"></view>
+</view>

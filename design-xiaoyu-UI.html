@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>小雨记 · 儿童向 UI 高保真原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* 清新糖果调色板 */
+    --sky:#BFeaff;        /* 天蓝 */
+    --sky-deep:#7Fd3ff;
+    --mint:#C8F5DD;       /* 薄荷 */
+    --peach:#FFD9C7;      /* 蜜桃 */
+    --sun:#FFE6A0;        /* 暖阳黄 */
+    --star:#FFC93C;       /* 星星金 */
+    --coral:#FF9AA2;      /* 珊瑚粉 */
+    --lav:#DDD0FF;        /* 薰衣草 */
+    --ink:#5A5470;        /* 柔和墨 */
+    --ink-soft:#8C86A3;
+    --card:#FFFFFF;
+    --line:#FFEAF0;
+    --ok:#5FD08A;
+    --shadow:0 10px 24px rgba(140,130,170,.18);
+    --shadow-sm:0 4px 12px rgba(140,130,170,.14);
+    --r:26px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"ZCOOL KuaiLe","PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(120% 80% at 12% 8%, var(--sky) 0%, transparent 55%),
+      radial-gradient(120% 80% at 92% 12%, var(--peach) 0%, transparent 50%),
+      radial-gradient(140% 100% at 50% 100%, var(--mint) 0%, transparent 60%),
+      linear-gradient(160deg,#f3fbff 0%,#fdf3ff 50%,#f3fff7 100%);
+    min-height:100%;
+    display:flex;align-items:center;justify-content:center;
+    padding:28px 14px;
+    overflow-x:hidden;
+  }
+  /* 漂浮装饰 */
+  .deco{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+  .cloud{position:absolute;font-size:54px;opacity:.55;animation:drift 26s linear infinite;}
+  .cloud.c1{top:8%;left:-8%;}
+  .cloud.c2{top:30%;left:80%;font-size:40px;animation-duration:34s;animation-direction:reverse;}
+  .cloud.c3{top:64%;left:6%;font-size:46px;animation-duration:30s;}
+  .tw{position:absolute;font-size:20px;opacity:.8;animation:tw 3s ease-in-out infinite;}
+  .tw.t1{top:14%;left:46%;} .tw.t2{top:48%;left:18%;animation-delay:.6s;}
+  .tw.t3{top:72%;left:74%;animation-delay:1.2s;} .tw.t4{top:24%;left:88%;animation-delay:.9s;}
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(120vw)}}
+  @keyframes tw{0%,100%{transform:scale(.8) rotate(-6deg);opacity:.5}50%{transform:scale(1.15) rotate(6deg);opacity:1}}
+
+  /* 手机框 */
+  .phone{
+    position:relative;z-index:1;
+    width:390px;height:844px;max-height:92vh;
+    background:#fff;border-radius:46px;
+    box-shadow:0 30px 70px rgba(120,110,160,.35), inset 0 0 0 10px #fff, inset 0 0 0 12px #efeaf6;
+    overflow:hidden;display:flex;flex-direction:column;
+  }
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#efeaf6;border-radius:0 0 16px 16px;z-index:30;}
+  .statusbar{height:46px;flex:0 0 46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-family:"Baloo 2";font-weight:700;color:var(--ink);font-size:13px;}
+  .statusbar .dots{letter-spacing:2px;}
+
+  .stage{position:relative;flex:1;overflow:hidden;}
+  .screen{position:absolute;inset:0;overflow-y:auto;padding:14px 16px 96px;opacity:0;transform:translateY(14px);pointer-events:none;transition:.35s;}
+  .screen.active{opacity:1;transform:none;pointer-events:auto;}
+  .screen::-webkit-scrollbar{width:0;}
+
+  /* 顶部孩子条 */
+  .kidbar{display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,var(--sky),var(--mint));border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow-sm);position:relative;}
+  .kid-ava{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:28px;box-shadow:var(--shadow-sm);}
+  .kid-meta{line-height:1.2;}
+  .kid-name{font-size:19px;color:#3f5a72;}
+  .kid-sub{font-size:12px;color:#5e7e96;font-family:"Baloo 2";font-weight:600;}
+  /* 家长模式锁状态（图标开关，无文字、无背景；点击即切换） */
+  .lock-status{margin:-9px -9px -9px auto;display:flex;align-items:center;flex:0 0 auto;color:#a9a2ba;cursor:pointer;padding:9px;border-radius:50%;-webkit-tap-highlight-color:transparent;transition:color .25s,background .18s,transform .15s;}
+  .lock-status.open{color:var(--coral);}
+  .lock-status:active{transform:scale(.88);background:rgba(0,0,0,.05);}
+  @media(hover:hover){.lock-status:hover{background:rgba(0,0,0,.045);}}
+  .lock-status svg{width:22px;height:22px;display:block;}
+  /* 优先级旗子 */
+  .flag{display:inline-block;width:16px;height:14px;position:relative;vertical-align:middle;margin-left:6px;}
+  .flag::before{content:'';position:absolute;left:0;top:0;width:2px;height:14px;background:#b0a8c0;border-radius:1px;}
+  .flag::after{content:'';position:absolute;left:2px;top:0;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:10px solid var(--c);}
+
+  /* 英雄卡 */
+  .hero{margin-top:26px;background:linear-gradient(135deg,#fff6d8, #ffe9ef);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+  .hero .blob{position:absolute;border-radius:50%;filter:blur(2px);opacity:.6;}
+  .hero .b1{width:90px;height:90px;background:var(--sun);right:-20px;top:-26px;}
+  .hero .b2{width:60px;height:60px;background:var(--coral);left:-18px;bottom:-22px;opacity:.4;}
+  .starbig{display:flex;align-items:flex-end;gap:8px;}
+  .starbig .num{font-family:"Baloo 2";font-weight:800;font-size:46px;color:var(--star);line-height:1;text-shadow:0 3px 0 #fff,0 6px 10px rgba(255,201,60,.4);}
+  .starbig .unit{font-size:18px;color:#c79a2e;margin-bottom:6px;}
+  .starbig .spk{font-size:34px;animation:bob 2.4s ease-in-out infinite;transform-origin:bottom;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+  .hero-sub{display:flex;align-items:center;gap:10px;margin-top:12px;}
+  .levels{display:flex;gap:3px;font-size:20px;flex:0 0 auto;}
+  .levels span{filter:grayscale(1);opacity:.35;transition:.3s;}
+  .levels span.on{filter:none;opacity:1;animation:pop .4s ease;}
+  @keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.25)}100%{transform:scale(1)}}
+  .streak{margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 12px;font-family:"Baloo 2";font-weight:700;color:#e8762f;box-shadow:var(--shadow-sm);white-space:nowrap;}
+  /* 打卡卡内：连续打卡胶囊靠右，与星级同行 */
+  .hero-sub .streak{margin-top:0;margin-left:auto;padding:6px 12px;font-size:14px;box-shadow:0 3px 8px rgba(232,118,47,.18);}
+  .streak .fl{animation:flick 1.6s ease-in-out infinite;}
+  @keyframes flick{0%,100%{transform:scale(1)}50%{transform:scale(1.2) rotate(-4deg)}}
+
+  /* 统计小条 */
+  .stats{display:flex;gap:10px;margin-top:14px;}
+  .stat{flex:1;background:#fff;border-radius:18px;padding:12px 8px;text-align:center;box-shadow:var(--shadow-sm);}
+  .stat .v{font-family:"Baloo 2";font-weight:800;font-size:22px;color:var(--ink);}
+  .stat .k{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+
+  /* 段标题 */
+  .sec-title{display:flex;align-items:center;gap:8px;margin:20px 4px 10px;font-size:17px;color:var(--ink);}
+  .sec-title .em{font-size:20px;}
+
+  /* 日历 */
+  .cal{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--shadow);}
+  .cal-h{display:flex;align-items:center;justify-content:space-between;font-family:"Baloo 2";font-weight:700;color:var(--ink);margin-bottom:10px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-grid .wd{font-size:11px;color:var(--ink-soft);text-align:center;font-family:"Baloo 2";font-weight:700;}
+  .day{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-family:"Baloo 2";font-weight:700;font-size:13px;color:var(--ink-soft);background:#f6f4fb;position:relative;cursor:pointer;transition:.2s;}
+  .day.lit{background:linear-gradient(135deg,var(--sky-deep),var(--mint));color:#fff;box-shadow:0 4px 10px rgba(127,211,255,.5);}
+  .day.lit::after{content:"✓";position:absolute;font-size:10px;top:-2px;right:-2px;background:#fff;color:var(--ok);width:15px;height:15px;border-radius:50%;display:grid;place-items:center;box-shadow:0 2px 4px rgba(0,0,0,.12);}
+  .day.today{outline:3px solid var(--coral);outline-offset:1px;}
+  .day.tap{animation:tap .3s ease;}
+  @keyframes tap{50%{transform:scale(1.15)}}
+
+  /* 今日任务清单 */
+  .task-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:18px;padding:12px 14px;box-shadow:var(--shadow-sm);margin-bottom:10px;}
+  .task-row .ti{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--peach),var(--sun));display:grid;place-items:center;font-size:24px;flex:0 0 42px;}
+  .task-row .tt{flex:1;font-size:16px;}
+  .task-row .ts{font-family:"Baloo 2";font-weight:700;color:var(--star);font-size:14px;}
+  .task-row.done .tt{color:var(--ink-soft);text-decoration:line-through;}
+  .chk{width:26px;height:26px;border-radius:50%;border:3px solid var(--sky-deep);display:grid;place-items:center;font-size:14px;color:#fff;flex:0 0 26px;box-sizing:border-box;}
+  .chk.ok{background:var(--ok);border-color:var(--ok);}
+  .chk.pick{cursor:pointer;transition:.2s;}
+  .chk.pick:active{transform:scale(.86);}
+  .day-sep{height:2px;border-radius:2px;background:var(--line);opacity:.75;margin:14px 4px;}
+
+  /* 奖励卡 */
+  .rw{display:flex;align-items:center;gap:12px;background:#fff;border-radius:18px;padding:12px 14px;box-shadow:var(--shadow-sm);margin-bottom:10px;position:relative;overflow:hidden;}
+  .rw .ri{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--lav),var(--sky));display:grid;place-items:center;font-size:26px;flex:0 0 46px;}
+  .rw .rt{flex:1;}
+  .rw .rname{font-size:16px;}
+  .rw .rmeta{font-size:12px;color:var(--ink-soft);margin-top:2px;font-family:"Baloo 2";font-weight:600;}
+  .tag{font-size:11px;padding:2px 8px;border-radius:999px;font-family:"Baloo 2";font-weight:700;}
+  .tag.reward{background:var(--mint);color:#2f8f5e;}
+  .tag.punish{background:#ffd9d9;color:#d05a5a;}
+  .cost{display:flex;align-items:center;gap:3px;font-family:"Baloo 2";font-weight:800;color:var(--star);}
+  .cost .s{font-size:15px;}
+
+  /* 子页签（选中底色 / 未选中白色） */
+  .subtabs{display:flex;gap:6px;background:#efeaf6;border-radius:999px;padding:5px;box-shadow:var(--shadow-sm);margin:6px 0 12px;}
+  .subtabs button{flex:1;border:none;background:#fff;font-family:"ZCOOL KuaiLe";font-size:15px;color:var(--ink-soft);padding:8px;border-radius:999px;cursor:pointer;transition:.25s;}
+  .subtabs button.on{background:linear-gradient(135deg,var(--sky),var(--mint));color:#3f5a72;box-shadow:var(--shadow-sm);}
+
+  /* 列表项（任务/奖惩管理） */
+  .item{background:#fff;border-radius:18px;padding:12px 14px;box-shadow:var(--shadow-sm);margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+  .item.locked-row{cursor:default;}
+  .item:not(.locked-row){cursor:pointer;transition:.15s;}
+  .item:not(.locked-row):active{transform:scale(.98);}
+  .item .ic{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,var(--sun),var(--peach));display:grid;place-items:center;font-size:24px;flex:0 0 44px;}
+  .item .body{flex:1;}
+  .item .nm{font-size:16px;}
+  .item .ds{font-size:12px;color:var(--ink-soft);font-family:"Baloo 2";font-weight:600;margin-top:2px;}
+  .fab{position:absolute;right:18px;bottom:92px;z-index:30;width:58px;height:58px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--coral),var(--sun));color:#fff;font-size:30px;box-shadow:0 8px 20px rgba(255,154,162,.55);cursor:pointer;display:none;align-items:center;justify-content:center;}
+  .fab.show{display:flex;animation:pop .3s ease;}
+
+  /* 我页 */
+  .me-card{background:linear-gradient(135deg,var(--lav),var(--sky));border-radius:var(--r);padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;}
+  .me-list{margin-top:14px;}
+  .me-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:13px 14px;box-shadow:var(--shadow-sm);margin-bottom:9px;cursor:pointer;}
+  .me-row .me-ic{font-size:22px;}
+  .me-ic svg{width:22px;height:22px;display:block;}
+  .me-row .me-tx{flex:1;font-size:15px;}
+  .me-row .ar{color:var(--ink-soft);}
+  .child-pick{display:flex;gap:8px;margin-top:10px;}
+  .child-pick .cp{flex:1;background:#fff;border-radius:14px;padding:8px;text-align:center;box-shadow:var(--shadow-sm);border:2px solid transparent;cursor:pointer;}
+  .child-pick .cp.on{border-color:var(--coral);}
+  .child-pick .cp .ce{font-size:26px;}
+  .child-pick .cp .cn{font-size:12px;margin-top:2px;}
+
+  /* 底部 Tab */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:74px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);display:flex;box-shadow:0 -6px 18px rgba(140,130,170,.12);z-index:25;border-radius:26px 26px 0 0;}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-soft);cursor:pointer;font-size:11px;font-family:"Baloo 2";font-weight:700;transition:.2s;}
+  .tab .te{font-size:24px;transition:.25s;}
+  .tab.on{color:var(--coral);}
+  .tab.on .te{transform:translateY(-3px) scale(1.12);}
+
+  /* PIN 遮罩 */
+  .pin-overlay{position:absolute;inset:0;z-index:60;background:linear-gradient(160deg,rgba(127,211,255,.96),rgba(221,208,255,.96));display:none;flex-direction:column;align-items:center;padding:60px 30px;}
+  .pin-overlay.show{display:flex;animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .pin-emo{font-size:64px;animation:bob 2.2s ease-in-out infinite;}
+  .pin-title{font-size:26px;color:#fff;margin-top:10px;text-shadow:0 3px 0 rgba(255,255,255,.4);}
+  .pin-sub{color:#fff;opacity:.9;font-size:13px;margin-top:4px;font-family:"Baloo 2";font-weight:600;}
+  .pin-dots{display:flex;gap:16px;margin:28px 0;}
+  .pin-dots i{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.5);display:block;transition:.2s;}
+  .pin-dots i.fill{background:#fff;box-shadow:0 0 10px #fff;transform:scale(1.1);}
+  .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:240px;}
+  .numpad button{aspect-ratio:1;border:none;border-radius:20px;background:rgba(255,255,255,.92);font-family:"Baloo 2";font-weight:800;font-size:26px;color:var(--ink);box-shadow:0 6px 14px rgba(120,110,160,.25);cursor:pointer;transition:.12s;}
+  .numpad button:active{transform:scale(.92);background:#fff;}
+  .numpad .fn{background:rgba(255,255,255,.4);color:#fff;font-size:18px;}
+  .pin-reset{margin-top:22px;color:#fff;font-size:13px;text-decoration:underline;background:none;border:none;cursor:pointer;font-family:"Baloo 2";font-weight:600;}
+  .pin-err{color:#fff;font-size:13px;margin-top:10px;height:16px;font-weight:700;}
+
+  /* 底部弹层 */
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:50;background:#fff;border-radius:28px 28px 0 0;padding:18px 18px 30px;box-shadow:0 -10px 30px rgba(120,110,160,.3);transform:translateY(105%);transition:.35s cubic-bezier(.2,.9,.3,1);max-height:80%;overflow-y:auto;}
+  .sheet.show{transform:none;}
+  .sheet::-webkit-scrollbar{width:0;}
+  .sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .sheet-h.top{margin-bottom:0;height:30px;justify-content:flex-end;}
+  .sheet-h .sh-t{font-size:19px;}
+  .sheet-h .sh-x{font-size:22px;color:var(--ink-soft);cursor:pointer;background:none;border:none;}
+  .mask{position:absolute;inset:0;background:rgba(90,84,112,.35);z-index:45;opacity:0;pointer-events:none;transition:.3s;}
+  .mask.show{opacity:1;pointer-events:auto;}
+
+  /* 图标选择：默认只显示当前选中图标，点击弹出选择控件 */
+  .ico-btn{display:flex;align-items:center;gap:10px;width:100%;border:2px solid var(--line);background:#fffafd;border-radius:14px;padding:7px 12px 7px 7px;cursor:pointer;font-family:inherit;text-align:left;transition:.2s;}
+  .ico-btn:active{transform:scale(.99);}
+  .ico-btn .ico-cur{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--sun),var(--peach));display:grid;place-items:center;font-size:23px;flex:0 0 42px;}
+  .ico-btn .ico-tip{font-family:"ZCOOL KuaiLe";font-size:13px;color:var(--ink-soft);}
+  .ico-btn .ico-caret{margin-left:auto;font-size:11px;color:#bdb7cc;transition:.25s;}
+  .ico-btn:active .ico-caret{transform:translateY(2px);}
+  .ip-mask{position:absolute;inset:0;background:rgba(90,84,112,.42);z-index:62;opacity:0;pointer-events:none;transition:.28s;}
+  .ip-mask.show{opacity:1;pointer-events:auto;}
+  .ip-panel{position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%) scale(.9);opacity:0;pointer-events:none;z-index:64;background:#fff;border-radius:24px;padding:16px;box-shadow:0 18px 44px rgba(120,110,160,.38);max-height:72%;display:flex;flex-direction:column;transition:.3s cubic-bezier(.2,.9,.3,1);}
+  .ip-panel.show{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto;}
+  .ip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .ip-head .ip-t{font-family:"ZCOOL KuaiLe";font-size:15px;color:var(--ink);}
+  .ip-head .ip-x{width:28px;height:28px;border:none;border-radius:50%;background:#f6f4fb;color:#8b85a0;font-size:16px;cursor:pointer;}
+  .ip-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;overflow-y:auto;padding:2px;flex:1;}
+  .ip-grid button{aspect-ratio:1;border:2px solid transparent;background:#f6f4fb;border-radius:12px;font-size:22px;cursor:pointer;transition:.15s;}
+  .ip-grid button:active{transform:scale(1.12);}
+  .ip-grid button.on{background:var(--sun);border-color:var(--coral);box-shadow:var(--shadow-sm);}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:5px;font-family:"Baloo 2";font-weight:700;}
+  .field input,.field select{width:100%;border:2px solid var(--line);border-radius:14px;padding:11px 12px;font-family:inherit;font-size:15px;color:var(--ink);background:#fffafd;outline:none;}
+  .field input:focus,.field select:focus{border-color:var(--sky-deep);}
+  .seg{display:flex;gap:6px;}
+  .seg button{flex:1;border:2px solid var(--line);background:#fffafd;border-radius:12px;padding:9px;font-family:"ZCOOL KuaiLe";font-size:13px;color:var(--ink-soft);cursor:pointer;}
+  .seg button.on{background:linear-gradient(135deg,var(--sky),var(--mint));color:#3f5a72;border-color:transparent;}
+  .primary{width:100%;border:none;border-radius:16px;padding:14px;font-family:"ZCOOL KuaiLe";font-size:17px;color:#fff;background:linear-gradient(135deg,var(--coral),var(--sun));box-shadow:var(--shadow);cursor:pointer;margin-top:6px;}
+  .ghost{width:100%;border:2px solid var(--line);border-radius:16px;padding:13px;font-family:"ZCOOL KuaiLe";font-size:15px;color:var(--ink-soft);background:#fff;cursor:pointer;margin-top:8px;}
+
+  /* 兑换确认 */
+  .redeem-box{text-align:center;}
+  .redeem-box .rb-ic{font-size:60px;}
+  .redeem-box .rb-nm{font-size:22px;margin-top:6px;}
+  .redeem-box .rb-cost{font-family:"Baloo 2";font-weight:800;color:var(--star);font-size:20px;margin-top:4px;}
+  .redeem-box .rb-have{font-size:13px;color:var(--ink-soft);margin-top:4px;}
+
+  /* 撒花 */
+  .confetti{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:70;overflow:hidden;}
+  .confetti i{position:absolute;top:-20px;width:10px;height:14px;border-radius:3px;animation:fall 1.6s ease-in forwards;}
+  @keyframes fall{to{transform:translateY(860px) rotate(540deg);opacity:0;}}
+
+  .toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(.8);background:rgba(90,84,112,.92);color:#fff;padding:12px 20px;border-radius:16px;font-size:15px;z-index:80;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  .hint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.6;font-family:"Baloo 2";font-weight:600;}
+</style>
+</head>
+<body>
+<div class="deco">
+  <div class="cloud c1">☁️</div><div class="cloud c2">☁️</div><div class="cloud c3">⛅</div>
+  <div class="tw t1">⭐</div><div class="tw t2">✨</div><div class="tw t3">🌟</div><div class="tw t4">💫</div>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span>9:41</span><span class="dots">📶 🔋</span></div>
+
+  <div class="stage">
+    <!-- ============ 首页·打卡页签 ============ -->
+    <section class="screen active" id="s-home-checkin">
+      <div class="kidbar">
+        <div class="kid-ava">🧒</div>
+        <div class="kid-meta">
+          <div class="kid-name" id="kidName">小雨</div>
+          <div class="kid-sub">今天也要加油哦～</div>
+        </div>
+        <div class="lock-status locked" id="lockStatus" role="button" tabindex="0" onclick="toggleParent()"></div>
+      </div>
+
+      <div class="subtabs home-sub" style="margin-top:10px">
+        <button class="on" data-h="checkin" onclick="homeSub(this)">⭐ 打卡</button>
+        <button data-h="redeem" onclick="homeSub(this)">🎁 兑换</button>
+      </div>
+
+      <div class="hero">
+        <div class="blob b1"></div><div class="blob b2"></div>
+        <div class="starbig">
+          <span class="spk">⭐</span>
+          <span class="num" id="starNum">28</span>
+          <span class="unit">颗星星</span>
+        </div>
+        <div class="hero-sub">
+          <div class="levels" id="levels">
+            <span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span>
+          </div>
+          <div class="streak"><span class="fl">🔥</span><span id="streakNum">6</span> 天连续打卡</div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="v" id="doneNum">2/3</div><div class="k">今日完成</div></div>
+        <div class="stat"><div class="v">🏆</div><div class="k">坚持小能手</div></div>
+        <div class="stat"><div class="v" id="monthNum">16</div><div class="k">本月打卡</div></div>
+      </div>
+
+      <div class="sec-title"><span class="em">📅</span> 九月打卡日历</div>
+      <div class="cal">
+        <div class="cal-h"><span>2026年9月</span><span id="calTip">点日期看任务</span></div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============ 首页·兑换页签 ============ -->
+    <section class="screen" id="s-home-redeem">
+      <div class="kidbar">
+        <div class="kid-ava">🧒</div>
+        <div class="kid-meta">
+          <div class="kid-name" id="kidName2">小雨</div>
+          <div class="kid-sub">我的奖励小超市</div>
+        </div>
+        <div class="lock-status locked" id="lockStatus2" role="button" tabindex="0" onclick="toggleParent()"></div>
+      </div>
+      <div class="subtabs home-sub" style="margin-top:10px">
+        <button data-h="checkin" onclick="homeSub(this)">⭐ 打卡</button>
+        <button class="on" data-h="redeem" onclick="homeSub(this)">🎁 兑换</button>
+      </div>
+      <div class="hero" style="background:linear-gradient(135deg,#e9fff4,#fff3da)">
+        <div class="blob b1" style="background:var(--mint)"></div>
+        <div class="starbig"><span class="spk">🛍️</span><span class="num" id="starNum2">28</span><span class="unit">颗星星可兑换</span></div>
+        <div class="streak" style="color:#2f8f5e">💝 攒星星换喜欢的好礼</div>
+      </div>
+      <div class="sec-title"><span class="em">🎁</span> 奖励货架</div>
+      <div id="rewardList"></div>
+      <div class="hint" id="redeemHint">展示模式下仅可浏览奖励 · 兑换需家长模式</div>
+    </section>
+
+    <!-- ============ 任务与奖励 ============ -->
+    <section class="screen" id="s-tasks">
+      <div class="subtabs">
+        <button class="on" data-st="task" onclick="switchSub(this)">📋 任务</button>
+        <button data-st="reward" onclick="switchSub(this)">🎁 奖励</button>
+      </div>
+      <div id="taskPane">
+        <div id="taskList"></div>
+      </div>
+      <div id="rewardPane" style="display:none">
+        <div id="rewardManageList"></div>
+      </div>
+    </section>
+
+    <!-- ============ 我 ============ -->
+    <section class="screen" id="s-mine">
+      <div class="me-card">
+        <div class="kid-ava" style="width:54px;height:54px;font-size:32px">🧒</div>
+        <div class="kid-meta"><div class="kid-name">家长中心</div><div class="kid-sub">小雨记 · v0.3</div></div>
+      </div>
+
+      <div class="sec-title"><span class="em">🔐</span> 家长模式</div>
+      <div class="me-row" id="parentToggle" onclick="toggleParent()">
+        <span class="me-ic" id="ptIc"></span>
+        <span class="me-tx" id="ptTx">进入家长模式</span>
+        <span class="ar" id="ptAr">›</span>
+      </div>
+      <div class="me-row" onclick="openPinSetting()">
+        <span class="me-ic">🔑</span>
+        <span class="me-tx">设置 / 修改 PIN</span>
+        <span class="ar">›</span>
+      </div>
+
+      <div class="sec-title"><span class="em">👧</span> 切换孩子</div>
+      <div class="child-pick" id="childPick">
+        <div class="cp on" onclick="pickChild(this,'小雨')"><div class="ce">🧒</div><div class="cn">小雨</div></div>
+        <div class="cp" onclick="pickChild(this,'小云')"><div class="ce">👦</div><div class="cn">小云</div></div>
+      </div>
+
+      <div class="me-list">
+        <div class="me-row" onclick="toast('打开帮助中心')"><span class="me-ic">❓</span><span class="me-tx">帮助中心</span><span class="ar">›</span></div>
+        <div class="me-row" onclick="toast('关于小雨记 v0.3 · github')"><span class="me-ic">ℹ️</span><span class="me-tx">关于小雨记</span><span class="ar">›</span></div>
+        <div class="me-row" onclick="toast('主题色设置（清新预设）')"><span class="me-ic">🎨</span><span class="me-tx">设置 · 主题色</span><span class="ar">›</span></div>
+        <div class="me-row" onclick="toast('邀请码：仅展示（V1.1 家庭绑定预留）')"><span class="me-ic">🔗</span><span class="me-tx">邀请码</span><span class="ar">XY-2026-0901 ›</span></div>
+      </div>
+      <div class="hint">孩子无独立账号 · 所有写操作由家长模式完成</div>
+    </section>
+
+    <!-- PIN 遮罩 -->
+    <div class="pin-overlay" id="pinOverlay">
+      <div class="pin-emo">🔐</div>
+      <div class="pin-title">家长模式</div>
+      <div class="pin-sub">请输入 6 位 PIN 解锁写权限</div>
+      <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="numpad" id="numpad">
+        <button onclick="pinInput('1')">1</button><button onclick="pinInput('2')">2</button><button onclick="pinInput('3')">3</button>
+        <button onclick="pinInput('4')">4</button><button onclick="pinInput('5')">5</button><button onclick="pinInput('6')">6</button>
+        <button onclick="pinInput('7')">7</button><button onclick="pinInput('8')">8</button><button onclick="pinInput('9')">9</button>
+        <button class="fn" onclick="pinReset()">清除</button><button onclick="pinInput('0')">0</button><button class="fn" onclick="pinBack()">⌫</button>
+      </div>
+      <button class="pin-reset" onclick="toast('走微信身份(OPENID)验证重置 PIN')">忘记 PIN？用微信验证重置</button>
+      <div class="pin-err" id="pinErr"></div>
+    </div>
+
+    <!-- 底部弹层 -->
+    <div class="mask" id="mask" onclick="closeSheet()"></div>
+    <div class="sheet" id="sheet"></div>
+
+    <!-- 二级：图标选择控件 -->
+    <div class="ip-mask" id="ipMask" onclick="closeIconPick()"></div>
+    <div class="ip-panel" id="ipPanel">
+      <div class="ip-head"><span class="ip-t">🎨 选择图标</span><button class="ip-x" onclick="closeIconPick()">×</button></div>
+      <div class="ip-grid" id="ipGrid"></div>
+    </div>
+
+    <!-- 撒花 / toast -->
+    <div class="confetti" id="confetti"></div>
+    <div class="toast" id="toast"></div>
+
+    <!-- 底部 Tab -->
+    <div class="tabbar">
+      <div class="tab on" data-tab="home" onclick="switchTab('home',this)"><span class="te">🏠</span>首页</div>
+      <div class="tab" data-tab="tasks" onclick="switchTab('tasks',this)"><span class="te">📋</span>任务与奖励</div>
+      <div class="tab" data-tab="mine" onclick="switchTab('mine',this)"><span class="te">⚙️</span>我</div>
+    </div>
+    <button class="fab" id="fab" onclick="openCreate()">＋</button>
+  </div>
+</div>
+
+<script>
+/* ---------- 模拟数据 ---------- */
+const state={ mode:'display', child:'小雨', pin:'', pinSet:true, mainTab:'home', subTab:'task', homeSub:'checkin',
+  stars:28, streak:6, todayDone:2, todayTotal:3,
+  litDays:new Set([1,2,3,5,6,8,9,10,12,13,14,15,16,17]),
+  tasks:[
+    {id:1,icon:'🦷',title:'早晚刷牙',score:1,priority:'中',ds:'习惯 · 每日',done:true},
+    {id:2,icon:'📚',title:'读绘本30分钟',score:1,priority:'中',ds:'习惯 · 每日',done:true},
+    {id:3,icon:'🧹',title:'收拾玩具',score:1,priority:'无',ds:'家务 · 否',done:false},
+    {id:4,icon:'🏀',title:'户外运动20分钟',score:2,priority:'低',ds:'习惯 · 每_天',done:false},
+    {id:5,icon:'✏️',title:'练字一页',score:1,priority:'高',ds:'习惯 · 每日',done:false},
+  ],
+  rewards:[
+    {id:1,icon:'🍦',name:'冰淇淋券',cat:'奖励',cost:10,stock:3},
+    {id:2,icon:'🎮',name:'多玩15分钟',cat:'奖励',cost:20,stock:5},
+    {id:3,icon:'📺',name:'多看一集动画',cat:'奖励',cost:15,stock:2},
+    {id:4,icon:'🚫',name:'免一次家务',cat:'惩罚',cost:5,stock:99},
+  ],
+};
+
+/* ---------- 工具 ---------- */
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1400);}
+function levelStars(s){return s>=25?5:s>=18?4:s>=10?3:s>=4?2:1;}
+function flagHtml(p){const c={高:'#ff5a5a',中:'#ffc107',低:'#5fd08a',无:''}[p];return c?`<span class="flag" style="--c:${c}"></span>`:'';}
+
+/* ---------- 渲染 ---------- */
+function renderLevels(){const n=levelStars(state.streak);$$('#levels span').forEach((s,i)=>s.classList.toggle('on',i<n));}
+function renderStars(){$('#starNum').textContent=state.stars;$('#starNum2').textContent=state.stars;}
+function renderCalendar(){
+  const wd=['日','一','二','三','四','五','六'];
+  let h='';wd.forEach(w=>h+=`<div class="wd">${w}</div>`);
+  const first=new Date(2026,8,1).getDay();for(let i=0;i<first;i++)h+='<div></div>';
+  for(let d=1;d<=30;d++){
+    const cls=['day'];if(state.litDays.has(d))cls.push('lit');if(d===17)cls.push('today');
+    h+=`<div class="${cls.join(' ')}" onclick="openDay(${d})">${d}</div>`;
+  }
+  $('#calGrid').innerHTML=h;
+}
+function renderTasksTab(){
+  const box=$('#taskList');box.innerHTML='';
+  state.tasks.slice().sort((a,b)=>a.id-b.id).forEach(t=>{
+    const editable=state.mode==='parent';
+    box.insertAdjacentHTML('beforeend',`<div class="item ${editable?'':'locked-row'}" ${editable?`onclick="editTask(${t.id})"`:`onclick="toast('请先在「我」页开启家长模式')"`}>
+      <div class="ic">${t.icon}</div>
+      <div class="body"><div class="nm">${t.title}</div><div class="ds">${t.ds}${flagHtml(t.priority)}</div></div>
+    </div>`);
+  });
+}
+function renderRewards(listSel,mode){
+  const box=$(listSel);box.innerHTML='';
+  const editable=state.mode==='parent';
+  const manage=mode==='manage';   /* manage=维护（任务与奖励页，点进编辑）；否则=兑换（首页兑换页签，点进兑换确认） */
+  state.rewards.forEach(r=>{
+    const act=manage?`editReward(${r.id})`:`openRedeem(${r.id})`;
+    const tip=manage?'请先在「我」页开启家长模式':'请点击右上角锁图标开启家长模式';
+    box.insertAdjacentHTML('beforeend',`
+      <div class="rw ${editable?'':'locked-row'}" ${editable?`onclick="${act}"`:`onclick="toast('${tip}')"`}>
+        <div class="ri">${r.icon}</div>
+        <div class="rt"><div class="rname">${r.name}</div>
+          <div class="rmeta"><span class="tag ${r.cat==='奖励'?'reward':'punish'}">${r.cat}</span> 库存 ${r.stock>90?'∞':r.stock}</div></div>
+        <div class="cost"><span class="s">⭐</span>${r.cost}</div>
+      </div>`);
+  });
+}
+
+/* ---------- 导航 ---------- */
+function switchTab(tab,el){
+  state.mainTab=tab;
+  $$('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  const map={home:'s-home-checkin',tasks:'s-tasks',mine:'s-mine'};
+  $$('.screen').forEach(s=>s.classList.remove('active'));
+  if(tab==='home'){const cur=state.homeSub==='redeem';$('#s-home-checkin').classList.toggle('active',!cur);$('#s-home-redeem').classList.toggle('active',cur);}
+  else $('#'+map[tab]).classList.add('active');
+  $('#fab').classList.toggle('show',tab==='tasks'&&state.mode==='parent');
+}
+function switchSub(btn){
+  state.subTab=btn.dataset.st;
+  $$('.subtabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  $('#taskPane').style.display=state.subTab==='task'?'block':'none';
+  $('#rewardPane').style.display=state.subTab==='reward'?'block':'none';
+}
+function homeSub(btn){
+  state.homeSub=btn.dataset.h;
+  $$('.home-sub button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  const isRedeem=btn.dataset.h==='redeem';
+  $('#s-home-checkin').classList.toggle('active',!isRedeem);
+  $('#s-home-redeem').classList.toggle('active',isRedeem);
+}
+
+/* ---------- 家长模式（仅「我」页可切换） ---------- */
+function setMode(m){
+  state.mode=m;renderLockStatus();
+  $('#redeemHint').textContent=m==='parent'?'家长模式：点击奖励即可兑换':'展示模式下仅可浏览奖励 · 兑换需家长模式';
+  renderTasksTab();renderRewards('#rewardList');renderRewards('#rewardManageList','manage');
+  $('#fab').classList.toggle('show',state.mainTab==='tasks'&&m==='parent');
+}
+function lockIcon(open){
+  return open
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/><circle cx="12" cy="16" r="1"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>';
+}
+function renderLockStatus(){
+  const open=state.mode==='parent';const ic=lockIcon(open);
+  const tip=open?'点击关闭家长模式':'点击开启家长模式';
+  [['#lockStatus'],['#lockStatus2']].forEach(([s])=>{const el=$(s);if(el){el.className='lock-status '+(open?'open':'locked');el.innerHTML=ic;el.title=tip;el.setAttribute('aria-label',tip);el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleParent();}};}});
+  const tog=$('#parentToggle');if(tog){$('#ptIc').innerHTML=ic;$('#ptIc').style.color=open?'var(--coral)':'#a9a2ba';$('#ptTx').textContent=open?'关闭家长模式':'进入家长模式';}
+}
+function toggleParent(){
+  if(state.mode==='parent'){setMode('display');toast('已关闭家长模式 🔒');}
+  else if(!state.pinSet){toast('请先到「我」页设置 PIN 后，再开启家长模式');}
+  else{openPin();}
+}
+function openPinSetting(){if(state.mode!=='parent'){toast('请先开启家长模式再设置 PIN');return;}
+  openSheet(`<div class="sheet-h"><span class="sh-t">🔑 设置 PIN</span></div>
+    <div class="field"><label>新的 6 位 PIN</label><input placeholder="如 123456" maxlength="6"/></div>
+    <button class="primary" onclick="closeSheet();toast('PIN 已设置（PRD-ACC-03）')">保存 PIN</button>`);}
+function openPin(){$('#pinOverlay').classList.add('show');state.pin='';renderPinDots();$('#pinErr').textContent='';}
+function closePin(){$('#pinOverlay').classList.remove('show');}
+function renderPinDots(){$$('#pinDots i').forEach((d,i)=>d.classList.toggle('fill',i<state.pin.length));}
+function pinInput(n){if(state.pin.length>=6)return;state.pin+=n;renderPinDots();if(state.pin.length===6){
+  setTimeout(()=>{closePin();setMode('parent');toast('已解锁家长模式 ✨');},260);}}
+function pinBack(){state.pin=state.pin.slice(0,-1);renderPinDots();}
+function pinReset(){state.pin='';renderPinDots();}
+
+/* ---------- 写操作 ---------- */
+function doCheck(id){
+  const t=state.tasks.find(x=>x.id===id);if(!t||t.done)return;
+  t.done=true;state.todayDone=Math.min(state.todayDone+1,state.tasks.length);
+  state.stars+=t.score;state.streak=Math.max(state.streak,6);state.litDays.add(17);
+  popStar();renderStars();renderTasksTab();renderCalendar();
+  toast('打卡成功 +'+t.score+'⭐');
+}
+function editTask(id){
+  if(state.mode!=='parent'){toast('请先在「我」页开启家长模式');return;}
+  const t=state.tasks.find(x=>x.id===id);if(!t)return;
+  const seg=(vals,cur)=>vals.map(v=>`<button class="${v===cur?'on':''}">${v}</button>`).join('');
+  openSheet(`<div class="sheet-h"><span class="sh-t">✏️ 编辑任务</span></div>
+    <div class="field"><label>标题</label><input value="${t.title}"/></div>
+    <div class="field"><label>类型</label><div class="seg">${seg(['习惯','家务'],'习惯')}</div></div>
+    ${iconField('图标',t.icon)}
+    <div class="field"><label>星星分值</label><input value="${t.score}" type="number"/></div>
+    <div class="field"><label>优先级</label><div class="seg">${seg(['高','中','低','无'],t.priority)}</div></div>
+    <button class="primary" onclick="closeSheet();toast('已保存 ✅')">保存</button>
+    <button class="ghost" onclick="closeSheet();toast('已删除（软删，不回退星星）')">删除任务</button>`);
+}
+function editReward(id){
+  if(state.mode!=='parent'){toast('请先在「我」页开启家长模式');return;}
+  const r=state.rewards.find(x=>x.id===id);if(!r)return;
+  const seg=(vals,cur)=>vals.map(v=>`<button class="${v===cur?'on':''}">${v}</button>`).join('');
+  openSheet(`<div class="sheet-h"><span class="sh-t">✏️ 编辑奖励</span></div>
+    <div class="field"><label>名称</label><input value="${r.name}"/></div>
+    ${iconField('图标',r.icon)}
+    <div class="field"><label>分类</label><div class="seg">${seg(['奖励','惩罚'],r.cat)}</div></div>
+    <div class="field"><label>兑换后重置（不限次）</label><div class="seg"><button class="on">是</button><button>否</button></div></div>
+    <div class="field"><label>星星 cost</label><input value="${r.cost}" type="number"/></div>
+    <button class="primary" onclick="closeSheet();toast('已保存 ✅')">保存</button>
+    <button class="ghost" onclick="closeSheet();toast('已删除（软删，不回退星星）')">删除奖励</button>`);
+}
+function openRedeem(id){
+  const r=state.rewards.find(x=>x.id===id);if(!r)return;
+  if(state.mode!=='parent'){toast('请先进入家长模式再兑换');return;}
+  if(state.stars<r.cost){toast('星星不够啦～');return;}
+  openSheet(`
+    <div class="redeem-box">
+      <div class="rb-ic">${r.icon}</div>
+      <div class="rb-nm">${r.name}</div>
+      <div class="rb-cost">需 ⭐ ${r.cost}</div>
+      <div class="rb-have">当前持有 ${state.stars} 颗星星</div>
+    </div>
+    <button class="primary" onclick="confirmRedeem(${r.id})">确认兑换 🎉</button>
+    <button class="ghost" onclick="closeSheet()">再想想</button>`);
+}
+function confirmRedeem(id){
+  const r=state.rewards.find(x=>x.id===id);if(!r)return;
+  state.stars-=r.cost;if(r.stock<90)r.stock--;
+  renderStars();renderRewards('#rewardList');renderRewards('#rewardManageList','manage');
+  closeSheet();confetti();toast('兑换成功！去兑现奖励吧 🎁');
+}
+
+/* ---------- 弹层 / 表单 ---------- */
+function openSheet(html){$('#sheet').innerHTML=`<div class="sheet-h top"><button class="sh-x" onclick="closeSheet()">×</button></div>`+html;$('#sheet').classList.add('show');$('#mask').classList.add('show');}
+function closeSheet(){$('#sheet').classList.remove('show');$('#mask').classList.remove('show');}
+function openDay(d){
+  const editable=state.mode==='parent';
+  const todo=state.tasks.filter(t=>!t.done),done=state.tasks.filter(t=>t.done);
+  const row=(t)=>`<div class="task-row ${t.done?'done':''}">
+    <div class="ti">${t.icon}</div><div class="tt">${t.title}</div>
+    ${t.done?`<div class="chk ok">✓</div>`
+      :`<div class="chk pick" onclick="${editable?`pickCheck(event,${t.id},${d})`:`toast('请点击右上角锁图标开启家长模式')`}"></div>`}
+  </div>`;
+  let html='';
+  html+=todo.length?todo.map(row).join(''):'<div class="hint">今天全部完成啦！🎉</div>';
+  if(done.length){if(todo.length)html+='<div class="day-sep"></div>';html+=done.map(row).join('');}
+  else if(todo.length){html+='<div class="hint">这天还没有打卡哦～</div>';}
+  openSheet(`<div class="sheet-h"><span class="sh-t">📅 9月${d}日</span></div>${html}`);
+}
+function pickCheck(ev,id,d){
+  ev.stopPropagation();
+  const sc=$('#sheet').scrollTop;
+  doCheck(id);openDay(d);
+  $('#sheet').scrollTop=sc;
+}
+function openCreate(){
+  if(state.subTab==='task'){
+    openSheet(`
+      <div class="sheet-h"><span class="sh-t">➕ 新建任务</span></div>
+      <div class="field"><label>标题</label><input placeholder="如：读绘本30分钟"/></div>
+      <div class="field"><label>类型</label><div class="seg"><button class="on">习惯</button><button>家务</button></div></div>
+      ${iconField('图标','🌟')}
+      <div class="field"><label>生效日期</label><input value="2026-09-17" type="text"/></div>
+      <div class="field"><label>重复</label><div class="seg"><button class="on">否</button><button>每_天</button><button>每周</button></div></div>
+      <div class="field"><label>星星分值</label><input value="1" type="number"/></div>
+      <div class="field"><label>优先级</label><div class="seg"><button>高</button><button class="on">中</button><button>低</button><button>无</button></div></div>
+      <button class="primary" onclick="closeSheet();toast('任务已创建 ✅')">保存任务</button>`);
+  }else{
+    openSheet(`
+      <div class="sheet-h"><span class="sh-t">➕ 新建奖励</span></div>
+      <div class="field"><label>标题</label><input placeholder="如：冰淇淋券"/></div>
+      ${iconField('图标','🎁')}
+      <div class="field"><label>分类</label><div class="seg"><button class="on">奖励</button><button>惩罚</button></div></div>
+      <div class="field"><label>兑换后重置（不限次）</label><div class="seg"><button class="on">是</button><button>否</button></div></div>
+      <div class="field"><label>星星 cost</label><input value="5" type="number"/></div>
+      <button class="primary" onclick="closeSheet();toast('奖励已创建 ✅')">保存</button>`);
+  }
+}
+function emojiList(){return ['🌟','🦷','📚','🧹','🏀','🏃','🥗','💧','🌙','⚽','🎨','🎹','🧩','🌈','🌸','🍎','🐱','🐶','🚀','⭐','🔥','💡','🎯','📝','🎵','🧸','🍔','🥛','🌞','⛅','❤️','👍','🙌','😀','🤩','🥳','🏆','✏️','📐','🔢','🌍','🔬','🎮','📺','🍦','🍪','🎁','⏰','🛏️','🚿','🪥','🧴','👕','🧦','📦','🪴','🌿','🍇','🍓','🥕','🥚','🧠','💪','🍭'];}
+/* 图标选择：字段默认只渲染当前选中图标，点击后弹出选择控件 */
+let ipTarget=null;
+function openIconPick(btn){
+  ipTarget=btn;
+  const cur=btn.querySelector('.ico-cur').textContent.trim();
+  $('#ipGrid').innerHTML=emojiList().map(e=>`<button class="${e===cur?'on':''}" onclick="pickEmoji(this,'${e}')">${e}</button>`).join('');
+  $('#ipMask').classList.add('show');$('#ipPanel').classList.add('show');
+}
+function closeIconPick(){$('#ipMask').classList.remove('show');$('#ipPanel').classList.remove('show');}
+function pickEmoji(btn,e){
+  if(ipTarget){
+    const cur=ipTarget.querySelector('.ico-cur');
+    cur.textContent=e;cur.style.animation='none';void cur.offsetWidth;cur.style.animation='pop .35s ease';
+  }
+  closeIconPick();
+}
+/* 表单中的图标字段（统一入口，供新建/编辑任务与奖励复用） */
+function iconField(label,icon){
+  return `<div class="field"><label>${label}</label>
+    <button type="button" class="ico-btn" onclick="openIconPick(this)">
+      <span class="ico-cur">${icon}</span>
+      <span class="ico-tip">点击更换图标</span>
+      <span class="ico-caret">▾</span>
+    </button></div>`;
+}
+
+/* ---------- 多孩子 ---------- */
+function pickChild(el,name){$$('#childPick .cp').forEach(c=>c.classList.remove('on'));el.classList.add('on');state.child=name;$('#kidName').textContent=name;$('#kidName2').textContent=name;toast('已切换到 '+name);}
+
+/* ---------- 动效 ---------- */
+function popStar(){const n=$('#starNum');n.style.transform='scale(1.3)';setTimeout(()=>n.style.transform='',200);}
+function confetti(){const c=$('#confetti');const colors=['#FFC93C','#FF9AA2','#7Fd3ff','#C8F5DD','#DDD0FF','#FFD9C7'];
+  for(let i=0;i<40;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=colors[i%6];p.style.animationDelay=Math.random()*.4+'s';c.appendChild(p);setTimeout(()=>p.remove(),1800);}}
+
+/* ---------- 初始化 ---------- */
+renderLevels();renderStars();renderCalendar();renderTasksTab();renderRewards('#rewardList');renderRewards('#rewardManageList','manage');renderLockStatus();
+</script>
+</body>
+</html>

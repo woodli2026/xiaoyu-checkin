@@ -1,0 +1,42 @@
+<!-- 点上方空白蒙层 = 关闭；面板内 catchtap 吞掉冒泡，避免点内容误关 -->
+<view wx:if="{{show}}" class="ds-mask" catchtap="onMask">
+  <view class="ds-panel" catchtap="noop">
+    <view class="ds-head">
+      <text class="ds-title">{{title}}</text>
+      <text class="ds-x" catchtap="close">×</text>
+    </view>
+
+    <!-- 注意：这里不能用 scroll-view —— 小程序 scroll-view 必须有确定 height，
+         只给 max-height 会导致其高度归零、内容（含空态文案）被整体吞掉。
+         改为普通 view，由 .ds-panel 自身 max-height + overflow 承担滚动。 -->
+    <view class="ds-body">
+      <view wx:for="{{todo}}" wx:key="taskId" class="ds-row"
+            data-id="{{item.taskId}}" catchtap="onPick">
+        <text class="ds-icon">{{item.icon}}</text>
+        <view class="ds-main">
+          <text class="ds-name">{{item.title}}</text>
+          <text class="ds-sub">+{{item.score}}⭐</text>
+        </view>
+        <view class="chk pick"></view>
+      </view>
+
+      <view wx:if="{{todo.length > 0 && done.length > 0}}" class="ds-sep"></view>
+
+      <view wx:for="{{done}}" wx:key="taskId" class="ds-row ds-done">
+        <text class="ds-icon">{{item.icon}}</text>
+        <view class="ds-main">
+          <text class="ds-name">{{item.title}}</text>
+          <text class="ds-sub">+{{item.score}}⭐</text>
+        </view>
+        <view class="chk ok">✓</view>
+      </view>
+
+      <view wx:if="{{!todo.length && !done.length}}" class="ds-empty">
+        <text>这天没有需要打卡的任务</text>
+        <text wx:if="{{diag}}" class="ds-diag">{{diag}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!todo.length && done.length}}" class="ds-foot">全部完成啦～ 🎉</view>
+  </view>
+</view>

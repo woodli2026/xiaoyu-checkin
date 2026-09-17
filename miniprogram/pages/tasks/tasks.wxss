@@ -1,0 +1,28 @@
+/* pages/tasks —— 页面专属样式；通用类（subtabs/item/tag/flag/seg/fab…）在 app.wxss */
+
+/* 与全局 .sheet 的 78vh 对齐，避免编辑弹层过高、底部按钮贴近 tabBar */
+.editor { max-height: 78vh; overflow: auto; }
+
+/* 日期 picker 内的展示框（沿用 .inp 观感） */
+.date-box { width: 100%; display: flex; align-items: center; }
+
+/* 重复间隔：每隔 [N] 天 */
+.field-row { display: flex; align-items: center; gap: 17rpx; margin-bottom: 23rpx; }
+.lab-inline { font-size: 27rpx; color: var(--ink); }
+
+/* 按周多选 */
+.weekrow { display: flex; gap: 10rpx; flex-wrap: wrap; }
+.wd {
+  width: 66rpx; height: 66rpx; line-height: 66rpx; text-align: center;
+  border-radius: 50%; font-size: 27rpx;
+  background: #f2eef9; color: var(--ink-soft);
+}
+.wd.on { background: linear-gradient(135deg, var(--sky-deep), var(--mint)); color: #fff; }
+
+.save-btn { width: 100%; margin-top: 31rpx; }
+.del-link { text-align: center; color: var(--coral); font-size: 28rpx; padding: 27rpx 0 6rpx; }
+
+/* 删除确认 */
+.confirm { text-align: center; }
+.cf-title { font-size: 37rpx; color: var(--ink); margin-bottom: 15rpx; }
+.cf-sub { font-size: 27rpx; color: var(--ink-soft); line-height: 1.6; margin-bottom: 31rpx; }

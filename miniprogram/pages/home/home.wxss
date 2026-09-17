@@ -1,0 +1,23 @@
+/* pages/home —— 页面专属样式；通用类（kidbar/hero/stats/cal/item…）在 app.wxss */
+
+/* 兑换页签的 hero 变体（设计稿：薄荷→暖阳渐变） */
+.hero-redeem { background: linear-gradient(135deg, #e9fff4, #fff3da); }
+.hero-redeem .blob.b1 { background: var(--mint); }
+.hero-redeem .streak {
+  margin-left: 0; margin-top: 23rpx;
+  color: #2f8f5e; box-shadow: var(--shadow-sm);
+}
+.streak-green { color: #2f8f5e; }
+
+/* 兑换确认弹层 */
+.redeem-sheet { text-align: center; }
+.rd-emoji { font-size: 115rpx; line-height: 1.2; }
+.rd-title { font-size: 42rpx; color: var(--ink); margin-top: 12rpx; }
+.rd-cost { font-size: 29rpx; color: var(--star); margin: 10rpx 0 31rpx; }
+.rd-btn { width: 100%; margin-top: 19rpx; }
+
+/* 隐私协议 */
+.privacy { text-align: left; }
+.pv-title { font-size: 37rpx; color: var(--ink); text-align: center; margin-bottom: 23rpx; }
+.pv-body { font-size: 28rpx; color: var(--ink); line-height: 1.75; margin-bottom: 31rpx; }
+.pv-btn { width: 100%; }

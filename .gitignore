@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 项目记忆与会话数据（含本机路径、调试记录，属本地资产，不入库）
+.workbuddy/
+
+# 自动化截图产物
+tools/shots/
+
+# 日志
+*.log
+debug.log
+
+# 开发者工具的「个人本地配置」：因人而异的编译开关，提交会造成协作冲突
+project.private.config.json
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 说明：cloudfunctions/*/lib/ 是共享逻辑的同步副本，
+# 微信开发者工具上传时只打包函数目录，故这些副本**必须入库**，不要忽略。

@@ -1,0 +1,8 @@
+<view class="tabbar {{hidden ? 'is-hidden' : ''}}">
+  <view wx:for="{{list}}" wx:key="pagePath"
+        class="tab {{selected === index ? 'on' : ''}}"
+        data-index="{{index}}" bindtap="onTap">
+    <text class="te">{{item.emoji}}</text>
+    <text class="tl">{{item.text}}</text>
+  </view>
+</view>

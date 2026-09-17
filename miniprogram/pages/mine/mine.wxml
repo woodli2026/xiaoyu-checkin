@@ -1,0 +1,159 @@
+<view class="page">
+  <!-- 家长中心卡 -->
+  <view class="me-card">
+    <view class="kid-ava">{{user.avatar}}</view>
+    <view class="kid-meta">
+      <view class="kid-name">家长中心</view>
+      <view class="kid-sub">小雨记 · v{{version}}</view>
+    </view>
+  </view>
+
+  <!-- 家长模式 -->
+  <view class="sec-title"><text class="em">🔐</text>家长模式</view>
+  <view class="me-row" bindtap="toggleParent">
+    <text class="me-ic {{mode === 'parent' ? 'on' : ''}}">{{mode === 'parent' ? '🔓' : '🔒'}}</text>
+    <view class="me-tx">
+      <view>{{mode === 'parent' ? '关闭家长模式' : '进入家长模式'}}</view>
+      <view class="me-sub">{{mode === 'parent' ? '当前可编辑' : '需输入 6 位 PIN'}}</view>
+    </view>
+    <text class="ar">›</text>
+  </view>
+  <view class="me-row" bindtap="openSetPin">
+    <text class="me-ic">🔑</text>
+    <view class="me-tx">
+      <view>设置 / 修改 PIN</view>
+      <view class="me-sub">需先进入家长模式</view>
+    </view>
+    <text class="ar">›</text>
+  </view>
+  <view class="me-row" bindtap="forgotPin">
+    <text class="me-ic">🆘</text>
+    <view class="me-tx">
+      <view>忘记 PIN？重置</view>
+      <view class="me-sub">经微信身份验证后恢复默认 PIN</view>
+    </view>
+    <text class="ar">›</text>
+  </view>
+
+  <!-- 我的孩子 -->
+  <view class="sec-title"><text class="em">👧</text>我的孩子</view>
+  <view class="child-pick">
+    <view wx:for="{{children}}" wx:key="_id"
+          class="cp {{item._id === childId ? 'on' : ''}}"
+          data-id="{{item._id}}" bindtap="pickChild">
+      <view class="ce">{{item.avatar}}</view>
+      <view class="cn">{{item.name}}</view>
+    </view>
+  </view>
+  <view class="me-row mt" bindtap="openEditChild">
+    <text class="me-ic">✏️</text>
+    <view class="me-tx">
+      <view>编辑孩子档案</view>
+      <view class="me-sub">昵称 / 头像</view>
+    </view>
+    <text class="ar">›</text>
+  </view>
+
+  <!-- 更多 -->
+  <view class="sec-title"><text class="em">⚙️</text>更多</view>
+  <view class="me-list">
+    <view class="me-row" bindtap="openHelp">
+      <text class="me-ic">❓</text>
+      <view class="me-tx"><view>帮助中心</view></view>
+      <text class="ar">›</text>
+    </view>
+    <view class="me-row" bindtap="openAbout">
+      <text class="me-ic">ℹ️</text>
+      <view class="me-tx"><view>关于小雨记</view></view>
+      <text class="ar">v{{version}}</text>
+    </view>
+    <view class="me-row" bindtap="copyInvite">
+      <text class="me-ic">🔗</text>
+      <view class="me-tx">
+        <view>邀请码</view>
+        <view class="me-sub">内测阶段仅展示，点击复制</view>
+      </view>
+      <text class="ar code">{{user.randomCode || '—'}}</text>
+    </view>
+    <view wx:if="{{!useCloud}}" class="me-row" bindtap="resetDemo">
+      <text class="me-ic">🧹</text>
+      <view class="me-tx">
+        <view>重置本地演示数据</view>
+        <view class="me-sub">仅未配置云环境时可用</view>
+      </view>
+      <text class="ar">›</text>
+    </view>
+  </view>
+
+  <view class="hint">孩子无独立账号 · 所有写操作由家长模式完成<br />{{useCloud ? '云端模式' : '本地模式（数据存本机）'}}</view>
+</view>
+
+<!-- 解锁家长模式 -->
+<pin-pad show="{{showPin}}" title="家长模式" sub="请输入 6 位 PIN 解锁写权限"
+         error="{{pinError}}" attempt="{{pinAttempt}}"
+         forgotText="忘记 PIN？恢复默认"
+         bind:complete="onPinComplete" bind:close="onPinClose" bind:forgot="onPinForgot" />
+
+<!-- 设置 / 确认 PIN -->
+<pin-pad show="{{showSetPin}}" title="{{setPinStage === 'new' ? '设置新 PIN' : '再输一次确认'}}"
+         sub="6 位纯数字" error="{{setPinErr}}" attempt="{{pinAttempt}}"
+         bind:complete="onSetPinComplete" bind:close="onSetPinClose" />
+
+<!-- 编辑孩子档案（昵称 / 头像） -->
+<view wx:if="{{showEditChild}}" class="mask" bindtap="closeEditChild">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">✏️ 编辑孩子档案</text>
+      <text class="sheet-x" catchtap="closeEditChild">×</text>
+    </view>
+
+    <view class="field">
+      <text class="lab">头像</text>
+      <view class="ico-btn" bindtap="openEditAvatar">
+        <view class="ico-cur">{{editAvatar}}</view>
+        <text class="ico-tip">点击更换头像</text>
+        <text class="ico-caret">▾</text>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="lab">昵称</text>
+      <input class="inp" value="{{editName}}" maxlength="12"
+             placeholder="最多 12 个字" bindinput="onEditNameInput" />
+    </view>
+
+    <view wx:if="{{editErr}}" class="edit-err">{{editErr}}</view>
+
+    <view class="ed-actions">
+      <button class="btn btn-ghost" bindtap="closeEditChild">取消</button>
+      <button class="btn" bindtap="saveChildProfile">保存</button>
+    </view>
+  </view>
+</view>
+
+<emoji-picker show="{{showEditAvatar}}" current="{{editAvatar}}"
+              bind:pick="onEditAvatarPick" bind:close="onEditAvatarClose" />
+
+<!-- 帮助 -->
+<view wx:if="{{showHelp}}" class="mask" bindtap="closeHelp">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h"><text class="sh-t">❓ 帮助中心</text></view>
+    <view class="help-item">1. 默认进入「展示模式」，适合孩子查看自己的星星、连续天数与日历点亮。</view>
+    <view class="help-item">2. 家长点首页右上角锁图标（或「我」页开关），输入 6 位 PIN 进入「家长模式」后可建任务/奖励、打卡、兑换。新账号默认 PIN 为 123456，建议在「我」页改成自己的。</view>
+    <view class="help-item">3. 打卡：首页日历点具体日期 → 弹出当日明细 → 点待打卡项圆环即完成。</view>
+    <view class="help-item">4. 兑换：首页「兑换」页签点奖励 → 确认后立即发放，只从星星里扣掉该奖励的星星数；设为「仅一次」的奖励，每位孩子兑过一次后就不能再兑。</view>
+    <view class="help-item">5. 家长模式在切后台或空闲 5 分钟后自动失效，需重新输入 PIN。</view>
+    <view class="m-close" bindtap="closeHelp">我知道了</view>
+  </view>
+</view>
+
+<!-- 关于 -->
+<view wx:if="{{showAbout}}" class="mask" bindtap="closeAbout">
+  <view class="sheet about" catchtap="noop">
+    <text class="ab-emoji">🌧️</text>
+    <view class="sheet-h center"><text class="sh-t">小雨记</text></view>
+    <view class="ab-ver">版本 v{{version}}</view>
+    <view class="ab-desc">专为小学生设计的家庭习惯养成小程序。以星星激励，把「家长布置 → 孩子打卡 → 攒星星 → 兑奖励」串成正向闭环。</view>
+    <view class="m-close" bindtap="closeAbout">关闭</view>
+  </view>
+</view>

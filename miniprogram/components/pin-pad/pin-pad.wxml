@@ -1,0 +1,20 @@
+<view wx:if="{{show}}" class="pp-overlay" catchtap="noop">
+  <view class="pp-emo">🔐</view>
+  <view class="pp-title">{{title}}</view>
+  <view class="pp-sub">{{sub || '请输入 6 位 PIN'}}</view>
+
+  <view class="pp-dots">
+    <view wx:for="{{dots}}" wx:key="*this" class="pp-dot {{input.length > item ? 'on' : ''}}"></view>
+  </view>
+
+  <view class="pp-err">{{error || ' '}}</view>
+
+  <view class="pp-keys">
+    <view wx:for="{{keys}}" wx:key="index"
+          class="pp-key {{item === '' ? 'ghost' : ''}} {{item === '⌫' ? 'fn' : ''}}"
+          data-k="{{item}}" catchtap="onKey">{{item}}</view>
+  </view>
+
+  <view wx:if="{{forgotText}}" class="pp-forgot" catchtap="forgot">{{forgotText}}</view>
+  <view class="pp-cancel" catchtap="close">取消</view>
+</view>

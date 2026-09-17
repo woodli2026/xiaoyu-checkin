@@ -1,0 +1,48 @@
+/* 图标选择面板 —— 视觉基线：design-小雨记-UI.html 的 .ip-panel / .ip-grid
+   6 列网格，格子 22px→42rpx，圆角 12px→23rpx，选中态为暖阳底 + 珊瑚描边 */
+
+.ep-mask {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(90, 84, 112, .42);
+  display: flex; align-items: center; justify-content: center;
+}
+.ep-panel {
+  width: 88%; max-height: 82vh;
+  /* 滚动由面板自身承担（scroll-view 必须有确定 height，只给 max-height 会算成 0 高） */
+  overflow-y: auto;
+  background: #fff; border-radius: 46rpx;
+  padding: 31rpx 31rpx 23rpx;
+  box-shadow: 0 35rpx 85rpx rgba(120, 110, 170, .38);
+  animation: ep-pop .26s ease both;
+}
+@keyframes ep-pop {
+  0% { transform: scale(.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ep-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 19rpx; }
+.ep-title { font-size: 29rpx; color: #5A5470; }
+.ep-x {
+  width: 54rpx; height: 54rpx; line-height: 54rpx; text-align: center;
+  border-radius: 50%; background: #f6f4fb; color: #8b85a0; font-size: 31rpx;
+}
+
+.ep-body { /* 高度不再限制，滚动交给 .ep-panel */ }
+.ep-grid { display: flex; flex-wrap: wrap; gap: 15rpx; padding: 4rpx; }
+.ep-cell {
+  width: calc((100% - 75rpx) / 6);
+  height: 88rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 42rpx;
+  border-radius: 23rpx;
+  background: #f6f4fb;
+  border: 4rpx solid transparent;
+  transition: transform .15s ease, background .15s ease;
+}
+.ep-cell:active { transform: scale(1.12); }
+.ep-cell.on {
+  background: #FFE6A0;
+  border-color: #FF9AA2;
+  box-shadow: 0 8rpx 23rpx rgba(140, 130, 170, .16);
+}
+.ep-close { margin-top: 19rpx; text-align: center; color: #8C86A3; font-size: 29rpx; padding: 15rpx; }

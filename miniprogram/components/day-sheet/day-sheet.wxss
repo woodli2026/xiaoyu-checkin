@@ -1,0 +1,64 @@
+/* 日明细弹层 —— 视觉基线：design-小雨记-UI.html 的 .sheet + .task-row
+   设计稿基准 390px → 1px ≈ 1.923rpx：sheet 圆角 28px→54rpx，task-row 圆角 18px→35rpx，
+   图标底 42px→81rpx，勾选环 26px→50rpx */
+
+.ds-mask {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(90, 84, 112, .42);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.ds-panel {
+  width: 100%; background: #fff;
+  border-radius: 54rpx 54rpx 0 0;
+  padding: 35rpx 35rpx 58rpx;
+  box-shadow: 0 -19rpx 58rpx rgba(120, 110, 170, .3);
+  /* 滚动由面板自身承担：内容少时贴合、多时封顶 82vh。
+     不要用 scroll-view —— 它必须有确定 height，只给 max-height 会算成 0 高。 */
+  max-height: 82vh;
+  overflow-y: auto;
+  animation: ds-up .3s ease both;
+}
+@keyframes ds-up {
+  0% { transform: translateY(60rpx); opacity: .4; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.ds-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 23rpx; }
+.ds-title { font-size: 37rpx; color: #5A5470; }
+.ds-x { font-size: 46rpx; color: #b9b2c9; line-height: 1; padding: 0 10rpx; }
+.ds-body { /* 高度不再限制，滚动交给 .ds-panel */ }
+
+/* 每条任务 = 独立白卡（设计稿 .task-row） */
+.ds-row {
+  display: flex; align-items: center; gap: 23rpx;
+  background: #fff; border-radius: 35rpx;
+  padding: 23rpx 27rpx; margin-bottom: 19rpx;
+  box-shadow: 0 8rpx 23rpx rgba(140, 130, 170, .16);
+}
+.ds-icon {
+  width: 81rpx; height: 81rpx; flex: 0 0 81rpx; border-radius: 27rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46rpx;
+  background: linear-gradient(135deg, #FFD9C7, #FFE6A0);
+}
+.ds-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ds-name { font-size: 31rpx; color: #5A5470; }
+.ds-sub { font-size: 27rpx; font-weight: 700; color: #FFC93C; margin-top: 4rpx; }
+.ds-done .ds-name { color: #a9a2ba; text-decoration: line-through; }
+
+/* 圆形勾选控件 */
+.chk {
+  width: 50rpx; height: 50rpx; flex: 0 0 50rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 27rpx; color: #fff;
+}
+.chk.pick { border: 6rpx solid #7Fd3ff; background: #fff; }
+.chk.pick:active { transform: scale(.88); background: #f0f9ff; }
+.chk.ok { background: #5FD08A; border: 6rpx solid #5FD08A; }
+
+/* 2px 淡分隔线（无文字标签） */
+.ds-sep { height: 4rpx; border-radius: 4rpx; background: #FFEAF0; margin: 27rpx 8rpx; }
+
+.ds-empty { text-align: center; color: #b9b2c9; font-size: 28rpx; padding: 70rpx 0; }
+.ds-diag { display: block; font-size: 22rpx; color: #c3bcd2; margin-top: 16rpx; }
+.ds-foot { text-align: center; color: #5FD08A; font-size: 28rpx; padding-top: 18rpx; }

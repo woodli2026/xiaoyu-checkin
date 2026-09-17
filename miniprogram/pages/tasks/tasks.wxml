@@ -1,0 +1,187 @@
+<view class="page">
+  <view class="subtabs">
+    <view class="subtab {{subTab === 'task' ? 'active' : ''}}" data-tab="task" bindtap="switchSub">📋 任务</view>
+    <view class="subtab {{subTab === 'reward' ? 'active' : ''}}" data-tab="reward" bindtap="switchSub">🎁 奖励</view>
+  </view>
+
+  <!-- ============ 任务列表（纯维护，创建时间序，优先级旗子） ============ -->
+  <block wx:if="{{subTab === 'task'}}">
+    <!-- 空态：仍给出明确的新建入口（display 模式点击会提示开启家长模式） -->
+    <view wx:if="{{tasks.length === 0}}" class="empty">
+      <text class="empty-emo">📋</text>
+      <text>还没有任务，先建一个吧～</text>
+      <view class="empty-btn" bindtap="onFab">＋ 新建任务</view>
+    </view>
+
+    <view wx:for="{{tasks}}" wx:key="_id" class="item"
+          data-id="{{item._id}}" bindtap="openTask">
+      <view class="ic">{{item.icon}}</view>
+      <view class="body">
+        <view class="nm">{{item.title}}</view>
+        <view class="ds">
+          <text>{{item.typeLabel}} · {{item.repeatLabel}}</text>
+          <view wx:if="{{item.priority !== 'none'}}" class="flag p-{{item.priority}}"></view>
+        </view>
+      </view>
+      <view wx:if="{{mode === 'parent'}}" class="row-del"
+            data-kind="task" data-id="{{item._id}}" catchtap="askDelete">×</view>
+    </view>
+  </block>
+
+  <!-- ============ 奖励列表 ============ -->
+  <block wx:else>
+    <view wx:if="{{rewards.length === 0}}" class="empty">
+      <text class="empty-emo">🎁</text>
+      <text>还没有奖励，先建一个吧～</text>
+      <view class="empty-btn" bindtap="onFab">＋ 新建奖励</view>
+    </view>
+
+    <view wx:for="{{rewards}}" wx:key="_id" class="item reward"
+          data-id="{{item._id}}" bindtap="openReward">
+      <view class="ic">{{item.icon}}</view>
+      <view class="body">
+        <view class="nm">{{item.title}}</view>
+        <view class="ds">
+          <text class="tag {{item.category === 'punish' ? 'punish' : 'reward'}}">{{item.catLabel}}</text>
+          <text>{{item.resetAfterRedeem ? '可反复兑换' : '仅一次'}}</text>
+        </view>
+      </view>
+      <view class="tail">
+        <view class="cost"><text class="s">⭐</text>{{item.cost}}</view>
+        <view wx:if="{{mode === 'parent'}}" class="row-del"
+              data-kind="reward" data-id="{{item._id}}" catchtap="askDelete">×</view>
+      </view>
+    </view>
+  </block>
+
+  <view class="hint">{{mode === 'parent' ? '点击条目进入编辑' : '展示模式：仅可查看 · 编辑需家长模式'}}</view>
+</view>
+
+<!-- 新建 / 编辑弹层：点蒙层空白处 / 右上角 × 均可取消 -->
+<view wx:if="{{showEditor}}" class="mask" bindtap="closeEditor">
+  <view class="sheet editor" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">{{editing ? '✏️ 编辑' : '➕ 新建'}}{{editorKind === 'task' ? '任务' : '奖励'}}</text>
+      <text class="sheet-x" catchtap="closeEditor">×</text>
+    </view>
+
+    <view class="field">
+      <text class="lab">标题</text>
+      <input class="inp" placeholder="{{editorKind === 'task' ? '如：读绘本30分钟' : '如：冰淇淋券'}}"
+             value="{{form.title}}" data-field="title" bindinput="onInput" />
+    </view>
+
+    <block wx:if="{{editorKind === 'task'}}">
+      <view class="field">
+        <text class="lab">类型</text>
+        <view class="seg">
+          <view wx:for="{{types}}" wx:key="value" class="seg-i {{form.type === item.value ? 'on' : ''}}"
+                data-field="type" data-value="{{item.value}}" bindtap="onSelect">{{item.label}}</view>
+        </view>
+      </view>
+    </block>
+
+    <view class="field">
+      <text class="lab">图标</text>
+      <view class="ico-btn" bindtap="openIcon">
+        <view class="ico-cur">{{form.icon}}</view>
+        <text class="ico-tip">点击更换图标</text>
+        <text class="ico-caret">▾</text>
+      </view>
+    </view>
+
+    <block wx:if="{{editorKind === 'task'}}">
+      <view class="field">
+        <text class="lab">生效日期</text>
+        <picker mode="date" value="{{form.date}}" bindchange="onPickDate">
+          <view class="inp date-box">{{form.date}}</view>
+        </picker>
+      </view>
+
+      <view class="field">
+        <text class="lab">重复</text>
+        <view class="seg">
+          <view class="seg-i {{!form.repeatEnabled ? 'on' : ''}}" data-mode="none" bindtap="onRepeatMode">否</view>
+          <view class="seg-i {{form.repeatEnabled && form.repeatType === 'day' ? 'on' : ''}}" data-mode="day" bindtap="onRepeatMode">每 N 天</view>
+          <view class="seg-i {{form.repeatEnabled && form.repeatType === 'week' ? 'on' : ''}}" data-mode="week" bindtap="onRepeatMode">按周</view>
+        </view>
+      </view>
+
+      <view class="field-row" wx:if="{{form.repeatEnabled && form.repeatType === 'day'}}">
+        <text class="lab-inline">每隔</text>
+        <input class="inp tiny" type="number" value="{{form.interval}}" bindinput="onInterval" />
+        <text class="lab-inline">天</text>
+      </view>
+
+      <view class="field" wx:if="{{form.repeatEnabled && form.repeatType === 'week'}}">
+        <text class="lab">每周哪几天</text>
+        <view class="weekrow">
+          <view wx:for="{{weekdayLabels}}" wx:key="index"
+                class="wd {{form.weekdays[index] ? 'on' : ''}}"
+                data-wd="{{index}}" bindtap="toggleWeekday">{{item}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <text class="lab">星星</text>
+        <input class="inp num" type="number" placeholder="1" value="{{form.score}}"
+               data-field="score" bindinput="onNumInput" />
+      </view>
+
+      <view class="field">
+        <text class="lab">优先级</text>
+        <view class="seg">
+          <view wx:for="{{priorities}}" wx:key="value" class="seg-i {{form.priority === item.value ? 'on' : ''}}"
+                data-field="priority" data-value="{{item.value}}" bindtap="onSelect">{{item.short}}</view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="field">
+        <text class="lab">分类</text>
+        <view class="seg">
+          <view wx:for="{{categories}}" wx:key="value" class="seg-i {{form.category === item.value ? 'on' : ''}}"
+                data-field="category" data-value="{{item.value}}" bindtap="onSelect">{{item.label}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <text class="lab">兑换后重置（不限次）</text>
+        <view class="seg">
+          <view class="seg-i {{form.resetAfterRedeem ? 'on' : ''}}" data-field="resetAfterRedeem" data-value="yes" bindtap="onSelectSwitch">是</view>
+          <view class="seg-i {{!form.resetAfterRedeem ? 'on' : ''}}" data-field="resetAfterRedeem" data-value="no" bindtap="onSelectSwitch">否</view>
+        </view>
+        <text class="field-tip">{{form.resetAfterRedeem ? '是：可反复兑换，只扣星星、不记「已完成」' : '否：每位孩子只能兑换一次'}}</text>
+      </view>
+
+      <view class="field">
+        <text class="lab">星星</text>
+        <input class="inp num" type="number" placeholder="5" value="{{form.cost}}"
+               data-field="cost" bindinput="onNumInput" />
+      </view>
+    </block>
+
+    <button class="btn save-btn" bindtap="save">保存</button>
+    <view wx:if="{{editing}}" class="del-link"
+          data-kind="{{editorKind}}" data-id="{{form._id}}" bindtap="askDelete">删除这项</view>
+  </view>
+</view>
+
+<!-- 图标选择 -->
+<emoji-picker show="{{showIcon}}" current="{{form.icon}}" bind:pick="onIconPick" bind:close="onIconClose" />
+
+<!-- 删除二次确认：点蒙层空白处 = 取消 -->
+<view wx:if="{{showConfirm}}" class="mask" bindtap="cancelDelete">
+  <view class="sheet confirm" catchtap="noop">
+    <view class="cf-title">确认删除？</view>
+    <view class="cf-sub">「{{confirmTitle}}」删除后不再显示；已产生的星星不会回退。</view>
+    <view class="ed-actions">
+      <button class="btn btn-ghost" bindtap="cancelDelete">取消</button>
+      <button class="btn btn-coral" bindtap="doDelete">删除</button>
+    </view>
+  </view>
+</view>
+
+<!-- 新建入口：家长模式下常驻右下角（抬到 tabBar 之上） -->
+<view wx:if="{{mode === 'parent'}}" class="fab" bindtap="onFab">＋</view>

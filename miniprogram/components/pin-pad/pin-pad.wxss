@@ -1,0 +1,57 @@
+/* 视觉基线：design-小雨记-UI.html 的 .pin-overlay（全屏渐变 + 白点 + 白色数字键盘） */
+
+.pp-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: linear-gradient(160deg, rgba(127, 211, 255, .97), rgba(221, 208, 255, .97));
+  display: flex; flex-direction: column; align-items: center;
+  padding: 80rpx 58rpx 40rpx;
+  animation: pp-fade .28s ease both;
+}
+@keyframes pp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.pp-emo { font-size: 96rpx; line-height: 1.1; animation: pp-bob 2.4s ease-in-out infinite; }
+@keyframes pp-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-10rpx) rotate(3deg); }
+}
+
+.pp-title {
+  font-size: 46rpx; color: #fff; margin-top: 16rpx;
+  text-shadow: 0 4rpx 0 rgba(255, 255, 255, .45);
+}
+.pp-sub { color: #fff; opacity: .92; font-size: 26rpx; margin-top: 8rpx; }
+
+.pp-dots { display: flex; gap: 30rpx; margin: 44rpx 0 8rpx; }
+.pp-dot {
+  width: 30rpx; height: 30rpx; border-radius: 50%;
+  background: rgba(255, 255, 255, .5);
+  transition: all .18s ease;
+}
+.pp-dot.on { background: #fff; box-shadow: 0 0 18rpx #fff; transform: scale(1.12); }
+
+/* 错误文案：加粗白字，保证在渐变底上足够醒目 */
+.pp-err { min-height: 44rpx; color: #fff; font-size: 26rpx; font-weight: 700; margin-top: 14rpx; text-align: center; padding: 0 10rpx; }
+
+.pp-keys { display: flex; flex-wrap: wrap; gap: 22rpx; width: 100%; max-width: 620rpx; margin-top: 14rpx; }
+.pp-key {
+  width: calc((100% - 44rpx) / 3);
+  height: 112rpx; line-height: 112rpx; text-align: center;
+  font-size: 46rpx; color: var(--ink, #5A5470);
+  border-radius: 34rpx;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 10rpx 24rpx rgba(120, 110, 160, .22);
+  transition: transform .12s ease, background .12s ease;
+}
+.pp-key:active { transform: scale(.92); background: #fff; }
+.pp-key.fn { background: rgba(255, 255, 255, .45); color: #fff; font-size: 34rpx; }
+.pp-key.ghost { visibility: hidden; }
+
+/* 自救入口：忘记 PIN 时恢复默认值（不经家长模式） */
+.pp-forgot {
+  margin-top: 28rpx; color: #fff; font-size: 27rpx; font-weight: 700;
+  text-decoration: underline; padding: 12rpx 30rpx;
+}
+.pp-cancel {
+  margin-top: 6rpx; color: #fff; font-size: 26rpx; opacity: .85;
+  text-decoration: underline; padding: 12rpx 30rpx;
+}
