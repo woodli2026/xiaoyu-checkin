@@ -21,3 +21,58 @@
 .edit-err { font-size: 25rpx; color: var(--coral); margin: 15rpx 0; text-align: center; }
 .edit-err + .ed-actions { margin-top: 19rpx; }
 .ed-actions { margin-top: 31rpx; }
+
+/* 头像编辑：当前头像 + 两种来源按钮（表情 / 相册） */
+.ava-row { display: flex; align-items: center; gap: 19rpx; }
+.ava-cur {
+  width: 81rpx; height: 81rpx; flex: 0 0 81rpx; border-radius: 23rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx;
+  background: linear-gradient(135deg, var(--sun), var(--peach));
+}
+.ava-img { padding: 0; overflow: hidden; }
+.ava-photo { width: 81rpx; height: 81rpx; display: block; }
+.ava-acts { display: flex; flex-direction: column; gap: 12rpx; flex: 1; }
+.ava-act {
+  text-align: center; font-size: 25rpx; color: var(--ink);
+  background: #fffafd; border: 4rpx solid var(--line); border-radius: 23rpx;
+  padding: 14rpx 10rpx;
+}
+.ava-act:active { transform: scale(.98); }
+
+/* 日期 picker 内的展示框（沿用 .inp 观感） */
+.date-box { width: 100%; display: flex; align-items: center; }
+/* 可点击的次要操作（如「清除生日」） */
+.field-link { display: inline-block; font-size: 25rpx; color: var(--coral); margin-top: 12rpx; }
+
+/* 宝宝管理列表 */
+.baby {
+  display: flex; align-items: center; gap: 19rpx;
+  background: #fff; border-radius: var(--r-md);
+  padding: 19rpx 23rpx; margin-bottom: 15rpx;
+  box-shadow: var(--shadow-sm);
+}
+.baby:active { transform: scale(.985); }
+.baby-ava {
+  width: 81rpx; height: 81rpx; flex: 0 0 81rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; overflow: hidden;
+  background: linear-gradient(135deg, var(--sun), var(--peach));
+}
+.baby-img { width: 81rpx; height: 81rpx; display: block; }
+.baby-tx { flex: 1; min-width: 0; }
+.baby-nm { font-size: 31rpx; color: var(--ink); }
+.baby-sub { font-size: 23rpx; color: var(--ink-soft); margin-top: 4rpx; }
+.baby-cur {
+  flex: 0 0 auto; font-size: 21rpx; font-weight: 700;
+  padding: 6rpx 17rpx; border-radius: 999rpx;
+  background: var(--mint); color: #2f8f5e;
+}
+.baby-sw {
+  flex: 0 0 auto; font-size: 23rpx;
+  padding: 8rpx 21rpx; border-radius: 999rpx;
+  background: #f2eef9; color: var(--ink-soft);
+}
+.baby-sw:active { transform: scale(.96); }
+.baby .ar { color: var(--ink-soft); font-size: 38rpx; flex: 0 0 auto; }
+.add-btn { width: 100%; margin-top: 31rpx; }

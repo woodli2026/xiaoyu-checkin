@@ -22,8 +22,10 @@ const SHEET_KEYS = [
   'showEditor', 'showConfirm', 'showIcon',
   // pages/home
   'showDay', 'showPin', 'showRedeem', 'showPrivacy',
+  // pages/feed
+  'showDetail',
   // pages/mine
-  'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showEditAvatar'
+  'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList'
 ];
 
 function getTabBar(page) {

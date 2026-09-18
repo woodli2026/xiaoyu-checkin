@@ -1,0 +1,66 @@
+/* pages/feed —— 页面专属样式；通用类（page/sec-title/item/empty/btn/sheet/field-tip…）在 app.wxss */
+
+.feed-h { display: flex; align-items: center; justify-content: space-between; }
+
+.sec-title { margin-top: 0; }
+
+.feed-hint {
+  font-size: 23rpx; color: var(--ink-soft);
+  margin: 4rpx 0 23rpx;
+}
+
+/* 日期分组标题 */
+.fday {
+  font-size: 25rpx; font-weight: 700; color: var(--ink-soft);
+  margin: 27rpx 0 15rpx;
+}
+
+/* 单条动态 */
+.fitem {
+  display: flex; align-items: center; gap: 19rpx;
+  background: #fff; border-radius: var(--r-md);
+  padding: 19rpx 23rpx; margin-bottom: 15rpx;
+  box-shadow: var(--shadow-sm);
+  transition: transform .15s ease;
+}
+.fitem:active { transform: scale(.985); }
+.fava {
+  width: 74rpx; height: 74rpx; flex: 0 0 74rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40rpx; overflow: hidden;
+  background: linear-gradient(135deg, var(--sun), var(--peach));
+}
+.fava-img { width: 74rpx; height: 74rpx; display: block; }
+.fmain { flex: 1; min-width: 0; }
+.ftitle {
+  font-size: 30rpx; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fico { margin-right: 8rpx; }
+.fsub { font-size: 22rpx; color: var(--ink-soft); margin-top: 4rpx; }
+.fdelta { flex: 0 0 auto; font-size: 31rpx; font-weight: 800; }
+.fdelta.up { color: #2f8f5e; }
+.fdelta.down { color: var(--coral); }
+
+.feed-foot { text-align: center; font-size: 23rpx; color: #b9b2c9; padding: 23rpx 0; }
+
+/* 详情弹层 */
+.dt-hero { text-align: center; padding-bottom: 23rpx; }
+.dt-ico { font-size: 96rpx; line-height: 1.2; }
+.dt-title { font-size: 35rpx; color: var(--ink); margin-top: 6rpx; }
+.dt-delta { font-size: 33rpx; font-weight: 800; margin-top: 10rpx; }
+.dt-delta.up { color: #2f8f5e; }
+.dt-delta.down { color: var(--coral); }
+.dt-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 23rpx; padding: 17rpx 0;
+  border-bottom: 2rpx solid var(--line);
+  font-size: 27rpx;
+}
+.dt-k { color: var(--ink-soft); flex: 0 0 auto; }
+.dt-v { color: var(--ink); text-align: right; }
+.dt-warn {
+  font-size: 23rpx; color: #d05a5a; background: #ffd9d9;
+  border-radius: var(--r-sm); padding: 12rpx 17rpx; margin-top: 19rpx;
+}
+.dt-btn { width: 100%; margin-top: 31rpx; }

@@ -1,5 +1,6 @@
 /* 图标选择面板 —— 视觉基线：design-小雨记-UI.html 的 .ip-panel / .ip-grid
-   6 列网格，格子 22px→42rpx，圆角 12px→23rpx，选中态为暖阳底 + 珊瑚描边 */
+   6 列网格，格子 22px→42rpx，圆角 12px→23rpx，选中态为暖阳底 + 珊瑚描边
+   2026-09-18：候选按用途分两套（任务/奖励），各 72 个、分 4 类，类名小标题引导 */
 
 .ep-mask {
   position: fixed; inset: 0; z-index: 400;
@@ -28,6 +29,9 @@
 }
 
 .ep-body { /* 高度不再限制，滚动交给 .ep-panel */ }
+/* 分类小标题：第一类的上边距归零（block 不产生节点，.ep-gname 是 .ep-body 的直接子元素） */
+.ep-gname { font-size: 24rpx; color: #8C86A3; margin: 23rpx 4rpx 12rpx; }
+.ep-body > .ep-gname:first-child { margin-top: 0; }
 .ep-grid { display: flex; flex-wrap: wrap; gap: 15rpx; padding: 4rpx; }
 .ep-cell {
   width: calc((100% - 75rpx) / 6);

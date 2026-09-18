@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page" bindtap="onAppTouch">
   <view class="subtabs">
     <view class="subtab {{subTab === 'task' ? 'active' : ''}}" data-tab="task" bindtap="switchSub">📋 任务</view>
     <view class="subtab {{subTab === 'reward' ? 'active' : ''}}" data-tab="reward" bindtap="switchSub">🎁 奖励</view>
@@ -23,8 +23,11 @@
           <view wx:if="{{item.priority !== 'none'}}" class="flag p-{{item.priority}}"></view>
         </view>
       </view>
-      <view wx:if="{{mode === 'parent'}}" class="row-del"
-            data-kind="task" data-id="{{item._id}}" catchtap="askDelete">×</view>
+      <view class="tail">
+        <view class="cost"><text class="s">⭐</text>{{item.score}}</view>
+        <view wx:if="{{mode === 'parent'}}" class="row-del"
+              data-kind="task" data-id="{{item._id}}" catchtap="askDelete">×</view>
+      </view>
     </view>
   </block>
 
@@ -169,7 +172,7 @@
 </view>
 
 <!-- 图标选择 -->
-<emoji-picker show="{{showIcon}}" current="{{form.icon}}" bind:pick="onIconPick" bind:close="onIconClose" />
+<emoji-picker show="{{showIcon}}" kind="{{editorKind}}" current="{{form.icon}}" bind:pick="onIconPick" bind:close="onIconClose" />
 
 <!-- 删除二次确认：点蒙层空白处 = 取消 -->
 <view wx:if="{{showConfirm}}" class="mask" bindtap="cancelDelete">

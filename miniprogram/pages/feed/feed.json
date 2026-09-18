@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "动态",
+  "usingComponents": {
+    "pin-pad": "/components/pin-pad/pin-pad"
+  }
+}

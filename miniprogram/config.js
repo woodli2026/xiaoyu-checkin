@@ -8,8 +8,8 @@ module.exports = {
   // 每次交付递增一位：若「关于」页仍显示旧版本号，说明开发者工具没有编译到最新代码
   APP_VERSION: '1.0.1',
 
-  // 家长 Token 有效期（毫秒）：5 分钟空闲（PRD-ACC-03）
-  PARENT_TOKEN_TTL: 5 * 60 * 1000,
+  // 家长模式空闲计时（毫秒）：连续 15 分钟无操作自动回到展示模式（R10，2026-09-18）
+  PARENT_IDLE_MS: 15 * 60 * 1000,
 
   // 隐私协议本地标记 key
   PRIVACY_KEY: 'xy_privacy_agreed'

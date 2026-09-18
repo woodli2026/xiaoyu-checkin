@@ -1,7 +1,10 @@
-<view class="page">
+<view class="page" bindtap="onAppTouch">
   <!-- 顶部孩子条：头像 + 昵称 + 副标题 + 右上角家长模式锁图标 -->
   <view class="kidbar">
-    <view class="kid-ava">{{child.avatar}}</view>
+    <view class="kid-ava">
+      <image wx:if="{{child.photo}}" class="kid-ava-img" src="{{child.photo}}" mode="aspectFill"/>
+      <text wx:else>{{child.avatar}}</text>
+    </view>
     <view class="kid-meta">
       <view class="kid-name">{{child.name}}</view>
       <view class="kid-sub">{{subTab === 'checkin' ? '今天也要加油哦～' : '我的奖励小超市'}}</view>
@@ -44,10 +47,11 @@
     </view>
 
     <view class="sec-title"><text class="em">📅</text>{{calendar.label}}打卡日历</view>
-    <view class="cal">
+    <view class="cal" bindtouchstart="onCalTouchStart" bindtouchend="onCalTouchEnd">
       <view class="cal-h">
+        <text class="cal-nav" bindtap="prevMonth" aria-label="上一月">◀</text>
         <text>{{calendar.label}}</text>
-        <text class="cal-tip-sm">点日期看任务</text>
+        <text class="cal-nav" bindtap="nextMonth" aria-label="下一月">▶</text>
       </view>
       <view class="cal-week">
         <text>日</text><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text>
@@ -58,11 +62,15 @@
           <view wx:else class="day {{item.lit ? 'lit' : ''}} {{item.today ? 'today' : ''}}"
                 data-date="{{item.date}}" bindtap="openDay">
             <text>{{item.day}}</text>
-            <text wx:if="{{item.lit}}" class="tick">✓</text>
+            <text wx:if="{{item.done}}" class="tick">✓</text>
           </view>
         </block>
       </view>
-      <view class="cal-tip">点击日期查看当天任务明细{{mode === 'parent' ? '' : '（展示模式只读）'}}</view>
+      <view class="cal-foot">
+        <view class="cal-tip">点击日期查看当天任务明细{{mode === 'parent' ? '' : '（展示模式只读）'}}</view>
+        <view wx:if="{{viewYm !== todayYm}}" class="cal-back" bindtap="backToToday">回到本月</view>
+      </view>
+      <view class="cal-swipe">← 左右滑动切换月份 →</view>
     </view>
   </block>
 
@@ -82,7 +90,7 @@
 
     <view wx:if="{{rewards.length === 0}}" class="empty">
       <text class="empty-emo">🎁</text>
-      还没有奖励，去「任务与奖励」添加吧～
+      还没有奖励，去「任务屋」添加吧～
     </view>
 
     <view wx:for="{{rewards}}" wx:key="_id" class="item reward"

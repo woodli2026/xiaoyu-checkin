@@ -68,15 +68,15 @@
 ### T2 `users` 集合权限 + `app.globalData` 登录流
 - **目标**：集合权限设「仅创建者可读写」；`app.js onLaunch` 调 `login` 写入全局态。
 - **接口（前端）**：`app.globalData = { user, childId, mode:'display', parentToken:null, parentTokenExpire:0 }`
-- **行为**：`onLaunch` → `wx.cloud.callFunction({name:'login'})` → 存 `user/childId`；`onHide` 清 `parentToken`（切后台失效）；`onShow` 若 `parentTokenExpire<now` 退回 display。
+- **行为**：`onLaunch` → `wx.cloud.callFunction({name:'login'})` → 存 `user/childId`；登录完成后若「启动即家长模式」开启且本地层（`!useCloud`）且已设 PIN → 静默调 `unlockParent({silent:true})` 进入家长模式（`globalData.mode='parent'`），否则维持 `display`；置 `globalData.lastActive=Date.now()`，`setInterval` 每 10s 巡检空闲；`onShow` 重置 `lastActive`（返回前台不立即关闭）；连续空闲 15 分钟 → `clearParent()` 回 `display` 并广播各页。
 - **边界**：登录失败 → `wx.showToast` 并停留展示模式；云环境未初始化 → 提示重试。
 - **TDD 失败用例**：
   1. 启动后 `globalData.user` 非空且 `childId` 存在。
-  2. `onHide` 后 `parentToken` 置 null。
+  2. 「启动即家长模式」开启 + 本地层 + 已设 PIN → 启动后 `globalData.mode==='parent'` 且 `parentToken` 非空（静默解锁，无需 PIN）。
   3. 启动 `wx.cloud.init` 在 `onLaunch` 首行完成（早于 login 调用）。
 
 ### T3 `unlockParent` + `parentToken` 校验中间件 + 单测
-- **目标**：PIN 校验 → 签发 `parentToken`（5min）；所有写云函数前置校验。
+- **目标**：PIN 校验（或本地层 `silent` 静默） → 签发 `parentToken`（15min）；所有写云函数前置校验。
 - **接口**：`unlockParent(pin) -> { parentToken, expireAt }`；中间件 `verifyParentToken(token) -> bool`。
 - **lib/token.js 纯函数**：
   - `issueToken(secret, ttlMs=300000) -> {token, expireAt}`（`token`=32位 hex，`expireAt=Date.now()+ttlMs`）。
@@ -265,6 +265,20 @@
   7. 多孩子 childId 切换隔离（T16）。
 - **TDD/手动**：上述 1–7 各写一条端到端手测脚本（开发者工具）+ 关键 lib 单测全绿。
 - **提包**：`project.config.json` 体验版上传；记录版本号到「关于」页。
+
+---
+
+## 阶段 E：家长模式默认打开（R10）
+
+### T21 静默解锁 + 空闲自动关闭（本地层）
+- **目标**：本地层启动即静默进入家长模式（免 PIN）；任意交互重置 15 分钟空闲计时，超时自动回展示模式；「我」页提供「启动即家长模式」开关（默认开）。
+- **接口（数据层）**：`unlockParent({silent:true})` 跳过 PIN 校验签发令牌（`pinSet=false` 仍 `PIN_NOT_SET`）；前端纯函数 `isIdleExpired(lastActive, now, idleMs)` 判超时。
+- **前端**：`app.js` 登录后按设置静默解锁；`tickIdle()` 每 10s 巡检；各页根 `<view bindtap="onAppTouch">` → `app.touch()` 重置；空闲到期广播 `display`。开关读写 `xy_start_in_parent`。
+- **边界**：云端模式不静默解锁（设备信任待接入），维持 PIN 流程；`display` 态不计时；危险操作保留二次确认不另加 PIN 重认证。
+- **TDD 失败用例**：
+  1. `unlockParent({silent:true})` 在 `pinSet=true` 返回有效令牌、`expireAt≈now+15min`；`pinSet=false` 返回 `PIN_NOT_SET`。
+  2. `isIdleExpired`：`now-lastActive>idleMs` 为真，无 `lastActive`/为 `null` 为假。
+  3. 正常 PIN 解锁路径不变、令牌同样 15min。
 
 ---
 

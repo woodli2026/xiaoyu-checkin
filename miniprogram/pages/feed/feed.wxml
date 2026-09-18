@@ -1,0 +1,81 @@
+<view class="page" bindtap="onAppTouch">
+  <view class="feed-h">
+    <view class="sec-title"><text class="em">🕒</text>动态</view>
+    <view class="lock-status {{mode === 'parent' ? 'open' : ''}}" bindtap="toggleParent"
+          aria-label="{{mode === 'parent' ? '点击关闭家长模式' : '点击开启家长模式'}}">
+      <text class="lk-ico">{{mode === 'parent' ? '🔓' : '🔒'}}</text>
+    </view>
+  </view>
+  <view class="feed-hint">全部宝宝的打卡与兑换记录 · 共 {{total}} 条</view>
+
+  <view wx:if="{{!loading && groups.length === 0}}" class="empty">
+    <text class="empty-emo">🕒</text>
+    <text>还没有动态，去打卡或兑换试试～</text>
+  </view>
+
+  <block wx:for="{{groups}}" wx:key="key" wx:for-item="g">
+    <view class="fday">{{g.label}}</view>
+    <view wx:for="{{g.items}}" wx:key="id" wx:for-item="it"
+          class="fitem" data-id="{{it.id}}" bindtap="openDetail">
+      <view class="fava">
+        <image wx:if="{{it.childPhoto}}" class="fava-img" src="{{it.childPhoto}}" mode="aspectFill"/>
+        <text wx:else>{{it.childAvatar}}</text>
+      </view>
+      <view class="fmain">
+        <view class="ftitle"><text class="fico">{{it.icon}}</text>{{it.title}}</view>
+        <view class="fsub">{{it.childName}} · {{it.kind === 'checkin' ? '打卡' : '兑换'}}{{it.date ? ' · ' + it.date : ''}}{{it.backfill ? ' · 补录' : ''}} · {{it.time}}</view>
+      </view>
+      <view class="fdelta {{it.delta > 0 ? 'up' : 'down'}}">{{it.deltaText}} ⭐</view>
+    </view>
+  </block>
+
+  <view wx:if="{{loading}}" class="feed-foot">加载中…</view>
+  <view wx:elif="{{groups.length > 0 && !hasMore}}" class="feed-foot">没有更多了</view>
+  <view class="foot-tip">{{useCloud ? '云端模式' : '本地模式（未配置云环境，数据存本机）'}}</view>
+</view>
+
+<!-- 记录详情：任务底部「标记为未完成」/ 奖励底部「取消兑换」 -->
+<view wx:if="{{showDetail}}" class="mask" bindtap="closeDetail">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">{{detail.kind === 'checkin' ? '📋 打卡详情' : '🎁 兑换详情'}}</text>
+      <text class="sheet-x" catchtap="closeDetail">×</text>
+    </view>
+
+    <view class="dt-hero">
+      <view class="dt-ico">{{detail.icon}}</view>
+      <view class="dt-title">{{detail.title}}</view>
+      <view class="dt-delta {{detail.delta > 0 ? 'up' : 'down'}}">{{detail.deltaText}} ⭐</view>
+    </view>
+
+    <view class="dt-row"><text class="dt-k">宝宝</text><text class="dt-v">{{detail.childName}}</text></view>
+
+    <block wx:if="{{detail.kind === 'checkin'}}">
+      <view class="dt-row"><text class="dt-k">打卡日期</text><text class="dt-v">{{detail.date || '—'}}{{detail.backfill ? '（补录）' : ''}}</text></view>
+      <view class="dt-row"><text class="dt-k">记录时间</text><text class="dt-v">{{detail.time}}</text></view>
+      <view class="dt-row"><text class="dt-k">任务类型</text><text class="dt-v">{{detail.typeLabel}}</text></view>
+      <view class="dt-row"><text class="dt-k">重复</text><text class="dt-v">{{detail.repeatLabel}}</text></view>
+      <view class="dt-row"><text class="dt-k">优先级</text><text class="dt-v">{{detail.priorityLabel}}</text></view>
+    </block>
+
+    <block wx:else>
+      <view class="dt-row"><text class="dt-k">分类</text><text class="dt-v">{{detail.categoryLabel}}</text></view>
+      <view class="dt-row"><text class="dt-k">花费星星</text><text class="dt-v">{{detail.stars}} ⭐</text></view>
+      <view class="dt-row"><text class="dt-k">兑换时间</text><text class="dt-v">{{detail.time}}</text></view>
+      <view class="dt-row"><text class="dt-k">兑换次数</text><text class="dt-v">{{detail.resetAfterRedeem ? '可反复兑换' : '每位宝宝仅一次'}}</text></view>
+    </block>
+
+    <view wx:if="{{detail.deleted}}" class="dt-warn">{{detail.kind === 'checkin' ? '该任务' : '该奖励'}}已被删除，此记录仅作留存。</view>
+
+    <view wx:if="{{detailErr}}" class="edit-err">{{detailErr}}</view>
+
+    <button wx:if="{{detail.kind === 'checkin'}}" class="btn dt-btn" disabled="{{busy}}" bindtap="undoCheckIn">标记为未完成</button>
+    <button wx:else class="btn dt-btn" disabled="{{busy}}" bindtap="undoRedeem">取消兑换</button>
+    <text class="field-tip">{{mode === 'parent' ? '撤销后星星会同步扣回／返还，日历与连续天数会自动重算。' : '展示模式只读：撤销需先用右上角锁图标开启家长模式。'}}</text>
+  </view>
+</view>
+
+<!-- 家长模式 PIN 闸 -->
+<pin-pad show="{{showPin}}" title="家长模式" sub="请输入 6 位 PIN 解锁写权限"
+         error="{{pinError}}" attempt="{{pinAttempt}}"
+         bind:complete="onPinComplete" bind:close="onPinClose" />

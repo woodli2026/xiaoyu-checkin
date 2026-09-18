@@ -2,5 +2,5 @@
   "usingComponents": {
     "emoji-picker": "/components/emoji-picker/emoji-picker"
   },
-  "navigationBarTitleText": "任务与奖励"
+  "navigationBarTitleText": "任务屋"
 }

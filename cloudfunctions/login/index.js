@@ -71,11 +71,15 @@ exports.main = async () => {
   }
 
   const children = db.collection('children');
-  let child = (await children.where({ ownerId: user._id }).orderBy('createdAt', 'asc').limit(1).get()).data[0];
+  // 内存过滤软删宝宝：老档案没有 deleted 字段，云端 where deleted:false 不匹配缺字段文档
+  const mine = (await children.where({ ownerId: user._id }).orderBy('createdAt', 'asc').limit(50).get())
+    .data.filter(c => !c.deleted);
+  let child = mine[0] || null;
   if (!child) {
     const cdoc = {
-      ownerId: user._id, name: '宝宝', avatar: '🧒',
-      totalStars: 0, streak: 0, lastCheckInDate: null, createdAt: Date.now()
+      ownerId: user._id, name: '宝宝', avatar: '🧒', photo: '',
+      gender: '', birthday: '', allergens: '',
+      totalStars: 0, streak: 0, lastCheckInDate: null, createdAt: Date.now(), deleted: false
     };
     const add = await children.add({ data: cdoc });
     child = Object.assign({ _id: add._id }, cdoc);

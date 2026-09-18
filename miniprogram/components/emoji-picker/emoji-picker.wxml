@@ -2,18 +2,21 @@
 <view wx:if="{{show}}" class="ep-mask" catchtap="onMask">
   <view class="ep-panel" catchtap="noop">
     <view class="ep-head">
-      <text class="ep-title">🎨 选择图标</text>
+      <text class="ep-title">🎨 选择{{setLabel}}</text>
       <text class="ep-x" catchtap="close">×</text>
     </view>
 
     <!-- 同 day-sheet：不用 scroll-view（它必须有确定 height，只给 max-height 会算成 0 高），
-         滚动交给 .ep-panel 自身 -->
+         滚动交给 .ep-panel 自身；4 类各带小标题，每类 6 列 × 3 行 -->
     <view class="ep-body">
-      <view class="ep-grid">
-        <view wx:for="{{icons}}" wx:key="*this"
-              class="ep-cell {{item === current ? 'on' : ''}}"
-              data-icon="{{item}}" catchtap="pick">{{item}}</view>
-      </view>
+      <block wx:for="{{groups}}" wx:key="name" wx:for-item="g">
+        <view class="ep-gname">{{g.name}}</view>
+        <view class="ep-grid">
+          <view wx:for="{{g.icons}}" wx:key="*this" wx:for-item="ic"
+                class="ep-cell {{ic === current ? 'on' : ''}}"
+                data-icon="{{ic}}" catchtap="pick">{{ic}}</view>
+        </view>
+      </block>
     </view>
 
     <view class="ep-close" catchtap="close">取消</view>

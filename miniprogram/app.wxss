@@ -63,8 +63,9 @@ view, text, button, input, scroll-view { box-sizing: border-box; }
 .kid-ava {
   width: 88rpx; height: 88rpx; border-radius: 50%; flex: 0 0 88rpx;
   background: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 54rpx; box-shadow: var(--shadow-sm);
+  font-size: 54rpx; box-shadow: var(--shadow-sm); overflow: hidden;
 }
+.kid-ava-img { width: 100%; height: 100%; border-radius: 50%; display: block; }
 .kid-meta { line-height: 1.25; flex: 1; min-width: 0; }
 .kid-name { font-size: 37rpx; color: #3f5a72; }
 .kid-sub { font-size: 23rpx; color: #5e7e96; }
@@ -193,7 +194,7 @@ view, text, button, input, scroll-view { box-sizing: border-box; }
   box-shadow: 0 8rpx 19rpx rgba(127, 211, 255, .5);
 }
 .day.lit:active { transform: scale(.92); }
-.day.lit .tick {
+.day .tick {
   position: absolute; top: -4rpx; right: -4rpx;
   width: 29rpx; height: 29rpx; border-radius: 50%;
   background: #fff; color: var(--ok); font-size: 19rpx; line-height: 29rpx; text-align: center;
@@ -201,6 +202,16 @@ view, text, button, input, scroll-view { box-sizing: border-box; }
 }
 .day.today { box-shadow: 0 0 0 6rpx var(--coral); }
 .cal-tip { text-align: center; font-size: 23rpx; color: #b9b2c9; margin-top: 19rpx; }
+.cal-nav { font-size: 26rpx; color: var(--coral); padding: 0 14rpx; font-weight: 700; }
+.cal-nav:active { opacity: .5; }
+.cal-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12rpx; }
+.cal-foot .cal-tip { text-align: left; margin-top: 0; }
+.cal-back {
+  font-size: 23rpx; color: var(--sky-deep); font-weight: 700;
+  padding: 6rpx 20rpx; border: 2rpx solid var(--sky-deep); border-radius: 999rpx;
+}
+.cal-back:active { background: var(--sky-deep); color: #fff; }
+.cal-swipe { text-align: center; font-size: 21rpx; color: #c8c2d6; margin-top: 8rpx; }
 
 /* ==================== 列表卡片（任务 / 奖励通用） ==================== */
 .item {
@@ -443,6 +454,10 @@ view, text, button, input, scroll-view { box-sizing: border-box; }
 }
 .child-pick .cp.on { border-color: var(--coral); }
 .child-pick .cp .ce { font-size: 50rpx; }
+.child-pick .cp .ce-img {
+  width: 64rpx; height: 64rpx; border-radius: 50%;
+  display: block; margin: 0 auto;
+}
 .child-pick .cp .cn { font-size: 23rpx; margin-top: 4rpx; color: var(--ink); }
 
 /* ==================== 杂项 ==================== */

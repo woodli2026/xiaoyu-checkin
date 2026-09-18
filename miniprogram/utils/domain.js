@@ -26,6 +26,19 @@ function streakOf(datesSet, asOf) {
   return s;
 }
 
+// 展示口径的连续天数：由打卡流水推导（增量计数器 child.streak 在「补打卡」场景不可靠，
+// 2026-09-18 修复：日历给过去日期补打卡会把计数器算错，展示一律用流水重推）。
+// 规则：今天已打卡 → 从今天往前数；今天还没打 → 从昨天往前数（昨天的连续今天仍延续显示）。
+// （与 cloudfunctions/lib/streak.js 同口径，两处由测试守卫一致）
+function displayStreak(datesOrSet, today) {
+  const set = datesSet(datesOrSet);
+  return streakOf(set, set.has(today) ? today : addDays(today, -1));
+}
+
+function datesSet(datesOrSet) {
+  return datesOrSet instanceof Set ? datesOrSet : new Set(datesOrSet || []);
+}
+
 // 星级评定：≥25→5, ≥18→4, ≥10→3, ≥4→2, 否则 1
 function levelOf(streak) {
   const n = Number(streak) || 0;
@@ -93,8 +106,14 @@ function redeemBlockReason(child, reward, alreadyRedeemed) {
   return null;
 }
 
+// 家长模式空闲计时：最后一次交互后超过 idleMs 即判定超时（用于 15 分钟自动关闭）
+function isIdleExpired(lastActive, now, idleMs) {
+  if (!lastActive) return false;          // 未进入家长模式 / 无交互记录 → 不超时
+  return (now || Date.now()) - lastActive > idleMs;
+}
+
 module.exports = {
-  ymd, addDays, streakOf, levelOf,
-  randHex, issueToken, verifyToken,
+  ymd, addDays, streakOf, displayStreak, levelOf,
+  randHex, issueToken, verifyToken, isIdleExpired,
   applyCheckIn, applyRedeem, redeemBlockReason
 };

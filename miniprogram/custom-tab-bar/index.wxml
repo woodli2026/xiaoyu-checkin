@@ -2,7 +2,7 @@
   <view wx:for="{{list}}" wx:key="pagePath"
         class="tab {{selected === index ? 'on' : ''}}"
         data-index="{{index}}" bindtap="onTap">
-    <text class="te">{{item.emoji}}</text>
+    <image class="ti" src="{{selected === index ? item.iconOn : item.icon}}" mode="aspectFit" />
     <text class="tl">{{item.text}}</text>
   </view>
 </view>

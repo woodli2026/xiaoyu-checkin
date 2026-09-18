@@ -2,6 +2,8 @@
 const { cloud, db, ok, fail, getOwnedChild } = require('./lib/cloud');
 const { verifyToken } = require('./lib/token');
 const { applyCheckIn } = require('./lib/checkInCore');
+const { displayStreak } = require('./lib/streak');
+const { levelOf } = require('./lib/level');
 const { ymd } = require('./lib/util');
 
 exports.main = async (event) => {
@@ -39,5 +41,8 @@ exports.main = async (event) => {
     });
   });
 
-  return ok({ totalStars: upd.totalStars, streak: upd.streak, level: upd.level });
+  // 连续天数由打卡流水推导（增量计数器在补打卡场景会算错，2026-09-18 修复）
+  const allCi = await db.collection('checkIns').where({ childId: child._id }).limit(1000).get();
+  const streak = displayStreak(new Set(allCi.data.map(c => c.date)), ymd(new Date()));
+  return ok({ totalStars: upd.totalStars, streak, level: levelOf(streak) });
 };

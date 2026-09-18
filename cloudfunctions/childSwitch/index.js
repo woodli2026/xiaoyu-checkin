@@ -6,6 +6,6 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
   const child = await getOwnedChild(OPENID, event.childId);
-  if (!child || child._id !== event.childId) return fail('FORBIDDEN', '无权访问该孩子档案');
+  if (!child || child._id !== event.childId || child.deleted) return fail('FORBIDDEN', '无权访问该宝宝档案');
   return ok({ childId: child._id });
 };

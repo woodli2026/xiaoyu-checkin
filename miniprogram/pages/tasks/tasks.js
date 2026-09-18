@@ -1,4 +1,4 @@
-// pages/tasks —— Tab2：任务与奖励（两子页签；建/改/删写操作仅家长模式）
+// pages/tasks —— Tab2：任务屋（任务 / 奖励两子页签；建/改/删写操作仅家长模式）
 const { callApi } = require('../../utils/api');
 const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
@@ -9,7 +9,7 @@ function todayStr() { return D.ymd(new Date()); }
 
 function emptyTaskForm(childId) {
   return {
-    childId, title: '', type: 'habit', icon: '🌟',
+    childId, title: '', type: 'habit', icon: '✏️',
     dateEnabled: true, date: todayStr(),
     repeatEnabled: false, repeatType: 'day', interval: 1,
     weekdays: [false, false, false, false, false, false, false],
@@ -31,6 +31,9 @@ Page({
     showIcon: false,
     showConfirm: false, confirmKind: '', confirmId: '', confirmTitle: ''
   },
+
+  // 任意点击重置家长模式空闲计时（R10）
+  onAppTouch() { getApp().touch(); },
 
   onShow() {
     // 自定义 tabBar 需由页面主动同步选中态。

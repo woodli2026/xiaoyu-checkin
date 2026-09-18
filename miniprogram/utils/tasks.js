@@ -81,7 +81,17 @@ function splitTasks(list) {
   return { todo, done };
 }
 
+// 某日是否「所有可见任务都已完成」——日历右上角对号的依据（而非「任意打卡」）。
+// 返回 false 的两种情况：① 当天没有任何可见任务（无事可做，不显示对号）；
+// ② 存在可见任务但未全部打卡。checkIns 形如 [{taskId, date}]。
+function dayAllDone(tasks, checkIns, dateStr) {
+  const visible = (tasks || []).filter(t => taskVisibleOn(t, dateStr));
+  if (!visible.length) return false;
+  const doneIds = new Set((checkIns || []).filter(c => c.date === dateStr).map(c => c.taskId));
+  return visible.every(t => doneIds.has(t._id));
+}
+
 module.exports = {
-  toDate, daysBetween, taskVisibleOn, priorityInfo, splitTasks, repeatLabel,
+  toDate, daysBetween, taskVisibleOn, priorityInfo, splitTasks, repeatLabel, dayAllDone,
   TYPE_LABEL, TYPE_OPTIONS, PRIORITY_OPTIONS, CATEGORY_LABEL, CATEGORY_OPTIONS
 };

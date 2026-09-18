@@ -7,17 +7,25 @@ const { setTabBarHidden, attachTabBarSync } = require('../../utils/tabbar');
 
 function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
-function buildCalendar(litSet, today) {
-  const parts = today.split('-').map(Number);
+// 构建任意月份的日历：lit=当天有任意打卡（背景色）；done=当天所有可见任务都已完成（右上角对号）
+// 依赖完整 tasks / checkIns，因此可渲染当前月份之外的历史月（打卡流水与任务清单均全量返回）。
+function buildCalendar(allTasks, checkIns, viewYm, today) {
+  const parts = viewYm.split('-').map(Number);
   const y = parts[0];
   const m = parts[1];
   const startWd = new Date(y, m - 1, 1).getDay();
   const daysInMonth = new Date(y, m, 0).getDate();
+  const litSet = new Set(checkIns.map(c => c.date));
   const cells = [];
   for (let i = 0; i < startWd; i++) cells.push({ key: 'b' + i, blank: true });
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${y}-${pad2(m)}-${pad2(d)}`;
-    cells.push({ key: ds, day: d, date: ds, lit: litSet.has(ds), today: ds === today });
+    cells.push({
+      key: ds, day: d, date: ds,
+      lit: litSet.has(ds),
+      today: ds === today,
+      done: T.dayAllDone(allTasks, checkIns, ds)
+    });
   }
   return { cells, label: y + '年' + m + '月' };
 }
@@ -34,6 +42,8 @@ Page({
     levelStars: [1, 2, 3, 4, 5],
     subTab: 'checkin',
     calendar: { cells: [], label: '' },
+    viewYm: '',            // 当前查看的月份（'YYYY-MM'），留空表示本月
+    todayYm: '',           // 真实当前月份，用于判断是否显示「回到本月」
     todayDone: 0,
     todayTotal: 0,
     monthCount: 0,
@@ -54,6 +64,9 @@ Page({
     showPrivacy: false,
     confetti: []
   },
+
+  // 任意点击重置家长模式空闲计时（R10）
+  onAppTouch() { getApp().touch(); },
 
   onShow() {
     // 自定义 tabBar 需由页面主动同步选中态。
@@ -109,12 +122,15 @@ Page({
       this._checkIns = res.checkIns || [];
       const todayTasks = res.todayTasks || [];
       const monthLit = res.monthLit || [];
+      const viewYm = today.slice(0, 7);
       this.setData({
         child: res.child,
         totalStars: res.totalStars,
         streak: res.streak,
         level: res.level,
-        calendar: buildCalendar(new Set(monthLit), today),
+        viewYm,
+        todayYm: viewYm,
+        calendar: buildCalendar(res.tasks || [], res.checkIns || [], viewYm, today),
         todayDone: todayTasks.filter(t => t.checked).length,
         todayTotal: todayTasks.length,
         monthCount: monthLit.length,
@@ -129,6 +145,47 @@ Page({
     } finally {
       wx.hideLoading();
     }
+  },
+
+  // —— 日历月份切换（左右滑动 + 箭头）——
+  renderCalendar() {
+    const today = D.ymd(new Date());
+    const viewYm = this.data.viewYm || today.slice(0, 7);
+    this.setData({
+      viewYm,
+      calendar: buildCalendar(this._allTasks || [], this._checkIns || [], viewYm, today)
+    });
+  },
+  stepMonth(delta) {
+    let [y, m] = (this.data.viewYm || D.ymd(new Date()).slice(0, 7)).split('-').map(Number);
+    m += delta;
+    if (m > 12) { m = 1; y += 1; }
+    else if (m < 1) { m = 12; y -= 1; }
+    this.setData({ viewYm: `${y}-${pad2(m)}` });
+    this.renderCalendar();
+  },
+  prevMonth() { this.stepMonth(-1); },   // 前一个月
+  nextMonth() { this.stepMonth(1); },     // 下一个月
+  backToToday() {
+    const ym = D.ymd(new Date()).slice(0, 7);
+    this.setData({ viewYm: ym });
+    this.renderCalendar();
+  },
+
+  // 横向滑动手势：右滑(Δx>0)→前一个月；左滑(Δx<0)→下一个月。需满足横向位移明显大于纵向，避免与页面滚动冲突。
+  onCalTouchStart(e) {
+    const t = e.touches[0];
+    this._tx = t.clientX;
+    this._ty = t.clientY;
+  },
+  onCalTouchEnd(e) {
+    if (this._tx == null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - this._tx;
+    const dy = t.clientY - this._ty;
+    this._tx = null;
+    if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return;
+    this.stepMonth(dx < 0 ? 1 : -1);
   },
 
   // —— 子页签 ——

@@ -4,6 +4,7 @@ const s = require('../utils/storage');
 const D = require('../utils/domain');
 const T = require('../utils/tasks');
 const SEED = require('../utils/seed');
+const CFG = require('../config');
 
 const VEGGIES = ['番茄', '黄瓜', '南瓜', '土豆', '玉米', '胡萝卜', '西兰花', '茄子',
   '菠菜', '豌豆', '蘑菇', '青椒', '白菜', '冬瓜', '莲藕', '山药'];
@@ -110,17 +111,22 @@ async function login(params) {
     user.pinScheme = PIN_SCHEME;
     saveUser(user);
   }
-  let children = allChildren();
+  let children = allChildren().filter(c => !c.deleted);
   if (!children.length) {
     const child = {
       _id: s.nextId('c'),
       ownerId: user._id,
       name: '宝宝',
       avatar: '🧒',
+      photo: '',
+      gender: '',
+      birthday: '',
+      allergens: '',
       totalStars: 0,
       streak: 0,
       lastCheckInDate: null,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      deleted: false
     };
     children = [child];
     saveChildren(children);
@@ -134,7 +140,7 @@ async function login(params) {
   return ok({ user, childId, pinSet: user.pinSet });
 }
 
-async function unlockParent({ pin }) {
+async function unlockParent({ pin, silent }) {
   const user = currentUser();
   if (!user) return fail('AUTH_FAIL', '未登录');
   if (!user.pinSet) return fail('PIN_NOT_SET', '请先在「我」页设置 PIN');
@@ -143,8 +149,12 @@ async function unlockParent({ pin }) {
   if (!isCurrentPinScheme(user)) {
     return fail('PIN_SCHEME_STALE', 'PIN 规则已更新，请点下方「忘记 PIN」恢复默认后重试');
   }
-  if (hashPin(pin) !== user.pinHash) return fail('PIN_INVALID', 'PIN 不正确');
-  const t = D.issueToken(5 * 60 * 1000);
+  // 本地层「启动即家长模式」：静默解锁（免 PIN），仅家庭内测阶段、手机即信任根时使用。
+  // 云端层不接入此分支（设备信任待接入），故 silent 仅本地兜底生效。
+  if (!silent) {
+    if (hashPin(pin) !== user.pinHash) return fail('PIN_INVALID', 'PIN 不正确');
+  }
+  const t = D.issueToken(CFG.PARENT_IDLE_MS || 15 * 60 * 1000);
   s.write(s.KEYS.token, { token: t.token, expireAt: t.expireAt, openid: user.openid });
   return ok({ parentToken: t.token, expireAt: t.expireAt });
 }
@@ -178,7 +188,8 @@ async function resetPinByOpenid() {
 // ============ 看板 ============
 
 async function getDashboard({ childId }) {
-  const children = allChildren();
+  // 过滤软删宝宝：与云端 getDashboard 同口径
+  const children = allChildren().filter(c => !c.deleted);
   const child = children.find(c => c._id === childId) || children[0];
   if (!child) return fail('NO_CHILD', '无孩子档案');
   const today = D.ymd(new Date());
@@ -207,17 +218,26 @@ async function getDashboard({ childId }) {
     checkIns.filter(c => c.date.slice(0, 7) === ym).map(c => c.date)
   )).sort();
 
+  // 连续天数由打卡流水推导（增量计数器在补打卡场景会算错，2026-09-18 修复）
+  const streak = D.displayStreak(new Set(checkIns.map(c => c.date)), today);
+
   return ok({
     totalStars: child.totalStars || 0,
-    streak: child.streak || 0,
-    level: D.levelOf(child.streak || 0),
+    streak,
+    level: D.levelOf(streak),
     monthLit,
     todayTasks,
     tasks,
     rewards,
     checkIns: checkIns.map(c => ({ taskId: c.taskId, date: c.date })),
-    child: { _id: child._id, name: child.name, avatar: child.avatar },
-    children: children.map(c => ({ _id: c._id, name: c.name, avatar: c.avatar }))
+    child: {
+      _id: child._id, name: child.name, avatar: child.avatar, photo: child.photo || '',
+      gender: child.gender || '', birthday: child.birthday || '', allergens: child.allergens || ''
+    },
+    children: children.map(c => ({
+      _id: c._id, name: c.name, avatar: c.avatar, photo: c.photo || '',
+      gender: c.gender || '', birthday: c.birthday || '', allergens: c.allergens || ''
+    }))
   });
 }
 
@@ -252,7 +272,12 @@ async function checkIn({ childId, taskId, date, parentToken }) {
   pts.push({ _id: s.nextId('p'), childId, delta: task.score, reason: '打卡:' + task.title, refType: 'checkin', refId: taskId, createdAt: Date.now() });
   savePoints(pts);
 
-  return ok({ totalStars: child.totalStars, streak: child.streak, level: upd.level });
+  // 连续天数由打卡流水推导（增量计数器在补打卡场景会算错，2026-09-18 修复）
+  const streak = D.displayStreak(
+    new Set(checkIns.filter(c => c.childId === childId).map(c => c.date)),
+    D.ymd(new Date())
+  );
+  return ok({ totalStars: child.totalStars, streak, level: D.levelOf(streak) });
 }
 
 // 兑换（即发放）：只扣星星。限次奖励由「是否已兑换过」把关，不再有库存概念。
@@ -293,7 +318,7 @@ async function taskCRUD({ op, parentToken, payload }) {
     if (!(Number(p.score) >= 1)) return fail('INVALID', '星星数至少为 1');
     const task = {
       _id: s.nextId('t'), ownerId: user._id, childId: p.childId,
-      title: String(p.title).trim(), type: p.type || 'habit', icon: p.icon || '🌟',
+      title: String(p.title).trim(), type: p.type || 'habit', icon: p.icon || '✏️',
       date: p.date || D.ymd(new Date()),
       repeat: p.repeat || { enabled: false, type: 'day', interval: 1, weekdays: [] },
       score: Number(p.score) || 1, priority: p.priority || 'none',
@@ -378,35 +403,122 @@ async function rewardCRUD({ op, parentToken, payload }) {
 
 // ============ 多孩子 ============
 
-// 孩子档案读写（与云函数 childCRUD 契约一致）：op=list 只读 / op=update 需家长令牌
+// 孩子档案字段口径：必须与云函数 childCRUD 保持一致
+const NAME_MAX_CHILD = 12;
+const ALLERGENS_MAX = 50;
+const MAX_CHILDREN = 6;
+const GENDERS = ['', 'boy', 'girl'];
+
+// 生日口径：空串（未填）或 YYYY-MM-DD 且为真实存在的日期
+function normalizeBirthday(v) {
+  const str = String(v == null ? '' : v).trim();
+  if (!str) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str);
+  if (!m) return null;
+  const y = Number(m[1]); const mo = Number(m[2]); const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return str;
+}
+
+function childView(c) {
+  return {
+    _id: c._id, name: c.name, avatar: c.avatar, photo: c.photo || '',
+    gender: c.gender || '', birthday: c.birthday || '', allergens: c.allergens || ''
+  };
+}
+
+// 从 payload 提取并校验可选档案字段；返回 { patch } 或 { error }
+function extractChildProfile(p) {
+  const patch = {};
+  if (p.gender != null) {
+    const g = String(p.gender);
+    if (GENDERS.indexOf(g) < 0) return { error: fail('INVALID', '性别取值不合法') };
+    patch.gender = g;
+  }
+  if (p.birthday != null) {
+    const b = normalizeBirthday(p.birthday);
+    if (b === null) return { error: fail('INVALID', '生日格式需为 YYYY-MM-DD') };
+    patch.birthday = b;
+  }
+  if (p.allergens != null) {
+    const a = String(p.allergens).trim();
+    if (a.length > ALLERGENS_MAX) return { error: fail('INVALID', '过敏原最多 ' + ALLERGENS_MAX + ' 个字') };
+    patch.allergens = a;
+  }
+  return { patch };
+}
+
+// 宝宝档案读写（与云函数 childCRUD 契约一致）：
+//   op=list 只读；op=create / update / delete 需家长令牌
+// 字段：name / avatar / photo / gender(''|boy|girl) / birthday(YYYY-MM-DD|'') / allergens
 async function childCRUD({ op, childId, parentToken, payload }) {
   const user = currentUser();
   if (!user) return fail('AUTH_FAIL', '未登录');
-  const mine = allChildren().filter(c => c.ownerId === user._id);
+  const mine = allChildren().filter(c => c.ownerId === user._id && !c.deleted);
 
   if (op === 'list') {
-    return ok({ children: mine.map(c => ({ _id: c._id, name: c.name, avatar: c.avatar })) });
+    return ok({ children: mine.map(childView) });
+  }
+
+  if (op === 'create') {
+    if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    if (mine.length >= MAX_CHILDREN) return fail('LIMIT', '最多添加 ' + MAX_CHILDREN + ' 个宝宝');
+    const p = payload || {};
+    const name = String(p.name == null ? '' : p.name).trim();
+    if (!name) return fail('INVALID', '昵称不能为空');
+    if (name.length > NAME_MAX_CHILD) return fail('INVALID', '昵称最多 ' + NAME_MAX_CHILD + ' 个字');
+    const prof = extractChildProfile(p);
+    if (prof.error) return prof.error;
+    const child = Object.assign({
+      _id: s.nextId('c'), ownerId: user._id, name,
+      avatar: String(p.avatar || '').trim() || '🧒', photo: p.photo != null ? String(p.photo) : '',
+      gender: '', birthday: '', allergens: '',
+      totalStars: 0, streak: 0, lastCheckInDate: null, createdAt: Date.now(), deleted: false
+    }, prof.patch);
+    const all = allChildren();
+    all.push(child);
+    saveChildren(all);
+    return ok({ child: childView(child) });
   }
 
   if (op === 'update') {
     if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
     const child = mine.find(c => c._id === childId);
-    if (!child) return fail('FORBIDDEN', '无权访问该孩子档案');
+    if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
     const p = payload || {};
-    if (p.name == null && p.avatar == null) return fail('INVALID', '没有需要更新的内容');
+    const patch = {};
     if (p.name != null) {
       const name = String(p.name).trim();
       if (!name) return fail('INVALID', '昵称不能为空');
-      if (name.length > 12) return fail('INVALID', '昵称最多 12 个字');
-      child.name = name;
+      if (name.length > NAME_MAX_CHILD) return fail('INVALID', '昵称最多 ' + NAME_MAX_CHILD + ' 个字');
+      patch.name = name;
     }
     if (p.avatar != null) {
       const avatar = String(p.avatar).trim();
       if (!avatar) return fail('INVALID', '头像不能为空');
-      child.avatar = avatar;
+      patch.avatar = avatar;
     }
+    // photo：自定义头像图片（云端 fileID / 本地保存路径）；空串表示清除照片、回退表情头像
+    if (p.photo != null) patch.photo = String(p.photo);
+    const prof = extractChildProfile(p);
+    if (prof.error) return prof.error;
+    Object.assign(patch, prof.patch);
+    if (!Object.keys(patch).length) return fail('INVALID', '没有需要更新的内容');
+    Object.assign(child, patch);
     saveChildren(allChildren().map(c => (c._id === child._id ? child : c)));
-    return ok({ child: { _id: child._id, name: child.name, avatar: child.avatar } });
+    return ok({ child: childView(child) });
+  }
+
+  if (op === 'delete') {
+    if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const child = mine.find(c => c._id === childId);
+    if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
+    if (mine.length <= 1) return fail('LAST_CHILD', '至少保留一个宝宝');
+    // 软删：任务/奖励/打卡等历史数据按 childId 关联，全部保留
+    child.deleted = true;
+    saveChildren(allChildren().map(c => (c._id === child._id ? child : c)));
+    return ok({ id: child._id, remaining: mine.length - 1 });
   }
 
   return fail('INVALID', '未知操作');
@@ -415,10 +527,130 @@ async function childCRUD({ op, childId, parentToken, payload }) {
 async function childSwitch({ childId, parentToken }) {
   if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
   const user = currentUser();
-  const child = allChildren().find(c => c._id === childId && c.ownerId === user._id);
-  if (!child) return fail('FORBIDDEN', '无权访问该孩子档案');
+  const child = allChildren().find(c => c._id === childId && c.ownerId === user._id && !c.deleted);
+  if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
   s.write(s.KEYS.childId, childId);
   return ok({ childId });
+}
+
+// ============ 动态（打卡 + 兑换流水）============
+
+// 与云函数 feedCRUD 契约一致：op=list 只读；undoCheckIn / undoRedeem 需家长令牌。
+// 口径要点（与云端逐条对齐）：
+//   ① 任务/奖励**故意不过滤 deleted** —— 历史动态要能显示已删条目的名字与图标；
+//   ② 反向流水（refType=checkin_undo / redeem_undo）只作审计，不在动态列表展示；
+//   ③ 撤销打卡后连续天数/星级由 displayStreak 重算；
+//   ④ 取消兑换会删除 redemptions 记录 → 限次奖励自动恢复可兑。
+const FEED_DEFAULT_LIMIT = 30;
+const FEED_MAX_LIMIT = 100;
+
+async function feedCRUD({ op, limit, skip, id, parentToken }) {
+  const user = currentUser();
+  if (!user) return fail('AUTH_FAIL', '未登录');
+  const children = allChildren().filter(c => c.ownerId === user._id && !c.deleted);
+
+  if (op === 'list') {
+    const childMap = {};
+    children.forEach(c => { childMap[c._id] = c; });
+    const taskMap = {};
+    allTasks().forEach(t => { taskMap[t._id] = t; });        // 不过滤 deleted
+    const rewardMap = {};
+    allRewards().forEach(r => { rewardMap[r._id] = r; });
+
+    const items = [];
+    allCheckIns().forEach(ci => {
+      const c = childMap[ci.childId];
+      if (!c) return;
+      const t = taskMap[ci.taskId];
+      const stars = Number(ci.score) || (t ? Number(t.score) : 0) || 0;
+      items.push({
+        id: ci._id, kind: 'checkin',
+        childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
+        refId: ci.taskId, title: t ? t.title : '（任务已删除）', icon: t ? t.icon : '❔',
+        stars, delta: stars,
+        date: ci.date || null, createdAt: ci.createdAt || 0, deleted: !!(t && t.deleted),
+        taskType: t ? (t.type || '') : '', repeat: t && t.repeat ? t.repeat : null,
+        priority: t ? (t.priority || 'none') : 'none'
+      });
+    });
+    allRedemptions().forEach(rd => {
+      const c = childMap[rd.childId];
+      if (!c) return;
+      const r = rewardMap[rd.rewardId];
+      const cost = Number(rd.cost) || (r ? Number(r.cost) : 0) || 0;
+      items.push({
+        id: rd._id, kind: 'redeem',
+        childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
+        refId: rd.rewardId, title: r ? r.title : '（奖励已删除）', icon: r ? r.icon : '❔',
+        stars: cost, delta: -cost,
+        date: null, createdAt: rd.createdAt || 0, deleted: !!(r && r.deleted),
+        category: r ? (r.category || 'reward') : 'reward',
+        resetAfterRedeem: r ? !!r.resetAfterRedeem : true
+      });
+    });
+
+    items.sort((a, b) => b.createdAt - a.createdAt);
+    const total = items.length;
+    const lim = Math.min(Math.max(Number(limit) || FEED_DEFAULT_LIMIT, 1), FEED_MAX_LIMIT);
+    const sk = Math.max(Number(skip) || 0, 0);
+    const page = items.slice(sk, sk + lim);
+    return ok({ items: page, hasMore: sk + page.length < total, total });
+  }
+
+  if (op === 'undoCheckIn') {
+    if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const list = allCheckIns();
+    const idx = list.findIndex(c => c._id === id);
+    if (idx < 0) return fail('NOT_FOUND', '打卡记录不存在或已撤销');
+    const ci = list[idx];
+    const child = children.find(c => c._id === ci.childId);
+    if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
+    const task = allTasks().find(t => t._id === ci.taskId);
+    const stars = Number(ci.score) || (task ? Number(task.score) : 0) || 0;
+
+    child.totalStars = Math.max(0, (child.totalStars || 0) - stars);
+    saveChildren(allChildren().map(c => (c._id === child._id ? child : c)));
+    list.splice(idx, 1);
+    saveCheckIns(list);
+    const pts = allPoints();
+    pts.push({
+      _id: s.nextId('p'), childId: child._id, delta: -stars,
+      reason: '撤销打卡:' + (task ? task.title : ''), refType: 'checkin_undo', refId: ci.taskId, createdAt: Date.now()
+    });
+    savePoints(pts);
+
+    const streak = D.displayStreak(
+      new Set(list.filter(c => c.childId === child._id).map(c => c.date)), D.ymd(new Date())
+    );
+    return ok({ totalStars: child.totalStars, streak, level: D.levelOf(streak), id: ci._id });
+  }
+
+  if (op === 'undoRedeem') {
+    if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const list = allRedemptions();
+    const idx = list.findIndex(r => r._id === id);
+    if (idx < 0) return fail('NOT_FOUND', '兑换记录不存在或已取消');
+    const rd = list[idx];
+    const child = children.find(c => c._id === rd.childId);
+    if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
+    const reward = allRewards().find(r => r._id === rd.rewardId);
+    const cost = Number(rd.cost) || (reward ? Number(reward.cost) : 0) || 0;
+
+    child.totalStars = (child.totalStars || 0) + cost;
+    saveChildren(allChildren().map(c => (c._id === child._id ? child : c)));
+    list.splice(idx, 1);
+    saveRedemptions(list);
+    const pts = allPoints();
+    pts.push({
+      _id: s.nextId('p'), childId: child._id, delta: cost,
+      reason: '取消兑换:' + (reward ? reward.title : ''), refType: 'redeem_undo', refId: rd.rewardId, createdAt: Date.now()
+    });
+    savePoints(pts);
+
+    return ok({ totalStars: child.totalStars, rewardId: rd.rewardId, id: rd._id });
+  }
+
+  return fail('INVALID', '未知操作');
 }
 
 // ============ 演示辅助 ============
@@ -435,6 +667,6 @@ module.exports = {
   login, unlockParent, setPin,
   resetPin: resetPinByOpenid,   // 与云函数 resetPin 对齐
   getDashboard, checkIn, redeem,
-  taskCRUD, rewardCRUD, childCRUD, childSwitch, resetAll,
+  taskCRUD, rewardCRUD, childCRUD, childSwitch, feedCRUD, resetAll,
   DEFAULT_PIN, PIN_LENGTH, PIN_SCHEME   // 导出供单测守卫（与 cloudfunctions/lib/pin.js 比对）
 };

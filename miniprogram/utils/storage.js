@@ -11,6 +11,7 @@ const KEYS = {
   redemptions: 'xy_redemptions',
   pointsLog: 'xy_pointsLog',
   token: 'xy_parent_token',
+  startInParent: 'xy_start_in_parent',
   seq: 'xy_seq'
 };
 

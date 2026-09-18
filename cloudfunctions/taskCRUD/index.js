@@ -20,7 +20,7 @@ exports.main = async (event) => {
     if (!(Number(p.score) >= 1)) return fail('INVALID', '星星数至少为 1');
     const doc = {
       ownerId: child.ownerId, childId: child._id,
-      title: String(p.title).trim(), type: p.type || 'habit', icon: p.icon || '🌟',
+      title: String(p.title).trim(), type: p.type || 'habit', icon: p.icon || '✏️',
       date: p.date || ymd(new Date()),
       repeat: p.repeat || { enabled: false, type: 'day', interval: 1, weekdays: [] },
       score: Number(p.score) || 1, priority: p.priority || 'none',

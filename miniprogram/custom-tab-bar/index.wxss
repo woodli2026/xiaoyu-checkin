@@ -1,6 +1,6 @@
 /* 视觉基线：design-小雨记-UI.html 的 .tabbar / .tab
    设计稿基准 390px 宽 → 1px ≈ 1.923rpx：
-   tabbar 高 74px → 142rpx；emoji 24px → 46rpx；文字 11px → 21rpx（此处放宽到 24rpx 以提升可读性） */
+   tabbar 高 74px → 142rpx；图标 24px → 46rpx；文字 11px → 21rpx（此处放宽到 24rpx 以提升可读性） */
 
 .tabbar {
   position: fixed;
@@ -30,12 +30,12 @@
 }
 .tab:active { opacity: .7; }
 
-.tab .te {
-  font-size: 46rpx;
-  line-height: 1;
+.tab .ti {
+  width: 46rpx; height: 46rpx;
+  display: block;
   transition: transform .25s ease;
 }
 .tab .tl { line-height: 1.1; }
 
 .tab.on { color: var(--coral, #FF9AA2); }
-.tab.on .te { transform: translateY(-6rpx) scale(1.12); }
+.tab.on .ti { transform: translateY(-6rpx) scale(1.12); }

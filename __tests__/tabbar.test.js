@@ -105,7 +105,8 @@ test('tabbar: 三个页面用到的弹层字段都被 SHEET_KEYS 覆盖', () => 
   const need = [
     'showEditor', 'showConfirm', 'showIcon',           // tasks
     'showDay', 'showPin', 'showRedeem', 'showPrivacy',  // home
-    'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showEditAvatar' // mine
+    'showDetail',                                       // feed
+    'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList' // mine
   ];
   need.forEach(k => assert.ok(SHEET_KEYS.includes(k), 'SHEET_KEYS 缺少 ' + k));
 });
