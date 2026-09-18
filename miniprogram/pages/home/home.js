@@ -91,16 +91,38 @@ Page({
     await this.load();
   },
 
-  // —— 合规：首次启动隐私协议 + 每日首次使用提醒 ——
+  // —— 合规：官方隐私协议授权（自定义弹窗模式）+ 每日首次使用提醒 ——
+  // 优先走官方 wx.getPrivacySetting（基础库 2.32.3+）：needAuthorization=true 才弹窗，
+  // 用户点 open-type="agreePrivacyAuthorization" 按钮完成授权后回调 agreePrivacy；
+  // 旧基础库无该 API 时回退到本地 PRIVACY_KEY 标记（与历史行为一致）。
   checkPrivacy() {
+    if (typeof wx.getPrivacySetting === 'function') {
+      wx.getPrivacySetting({
+        success: (res) => this.setData({ showPrivacy: !!res.needAuthorization }),
+        fail: () => this.checkPrivacyLocal()
+      });
+    } else {
+      this.checkPrivacyLocal();
+    }
+  },
+  checkPrivacyLocal() {
     let agreed = false;
     try { agreed = !!wx.getStorageSync(PRIVACY_KEY); } catch (e) {}
     this.setData({ showPrivacy: !agreed });
   },
+  // 双入口触发：新基础库经按钮 open-type 授权后由 bindagreeprivacyauthorization 回调；
+  // 旧基础库不识别 open-type，走 bindtap。处理幂等，重复触发无副作用。
   agreePrivacy() {
     try { wx.setStorageSync(PRIVACY_KEY, true); } catch (e) {}
     this.setData({ showPrivacy: false });
     this.restTip();
+  },
+  openPrivacyContract() {
+    if (typeof wx.openPrivacyContract === 'function') {
+      wx.openPrivacyContract({ fail: () => wx.showToast({ title: '暂时无法打开指引', icon: 'none' }) });
+    } else {
+      wx.showToast({ title: '当前微信版本暂不支持查看', icon: 'none' });
+    }
   },
   restTip() {
     const today = D.ymd(new Date());
