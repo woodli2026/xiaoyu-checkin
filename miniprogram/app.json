@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/home/home",
+    "pages/pet/pet",
     "pages/tasks/tasks",
     "pages/feed/feed",
     "pages/mine/mine"
@@ -20,6 +21,7 @@
     "borderStyle": "white",
     "list": [
       { "pagePath": "pages/home/home", "text": "首页" },
+      { "pagePath": "pages/pet/pet", "text": "宠物" },
       { "pagePath": "pages/tasks/tasks", "text": "任务屋" },
       { "pagePath": "pages/feed/feed", "text": "动态" },
       { "pagePath": "pages/mine/mine", "text": "我" }

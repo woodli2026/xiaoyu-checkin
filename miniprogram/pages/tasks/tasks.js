@@ -40,7 +40,7 @@ Page({
     // tabBar 的显隐不再靠人工配对：attachTabBarSync 会在每次 setData 后
     // 按弹层开关自动重算，因此不存在「忘了恢复」的可能（详见 utils/tabbar.js）
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1 });
+      this.getTabBar().setData({ selected: 2 });
     }
     attachTabBarSync(this);
     this.refresh();

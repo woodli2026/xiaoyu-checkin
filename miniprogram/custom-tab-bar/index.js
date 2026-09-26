@@ -11,6 +11,7 @@ Component({
     hidden: false,
     list: [
       { pagePath: '/pages/home/home', icon: '/images/tabbar/house-off.svg', iconOn: '/images/tabbar/house-on.svg', text: '首页' },
+      { pagePath: '/pages/pet/pet', icon: '/images/tabbar/pet-off.svg', iconOn: '/images/tabbar/pet-on.svg', text: '宠物' },
       { pagePath: '/pages/tasks/tasks', icon: '/images/tabbar/tasks-off.svg', iconOn: '/images/tabbar/tasks-on.svg', text: '任务屋' },
       { pagePath: '/pages/feed/feed', icon: '/images/tabbar/feed-off.svg', iconOn: '/images/tabbar/feed-on.svg', text: '动态' },
       { pagePath: '/pages/mine/mine', icon: '/images/tabbar/mine-off.svg', iconOn: '/images/tabbar/mine-on.svg', text: '我' }

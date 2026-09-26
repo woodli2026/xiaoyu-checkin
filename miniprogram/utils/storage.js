@@ -10,6 +10,7 @@ const KEYS = {
   checkIns: 'xy_checkIns',
   redemptions: 'xy_redemptions',
   pointsLog: 'xy_pointsLog',
+  pets: 'xy_pets',
   token: 'xy_parent_token',
   startInParent: 'xy_start_in_parent',
   seq: 'xy_seq'

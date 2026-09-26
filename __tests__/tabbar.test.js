@@ -106,7 +106,8 @@ test('tabbar: 三个页面用到的弹层字段都被 SHEET_KEYS 覆盖', () => 
     'showEditor', 'showConfirm', 'showIcon',           // tasks
     'showDay', 'showPin', 'showRedeem', 'showPrivacy',  // home
     'showDetail',                                       // feed
-    'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList' // mine
+    'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList', // mine
+    'showAdopt', 'showRename', 'showStats', 'showManage' // pet
   ];
   need.forEach(k => assert.ok(SHEET_KEYS.includes(k), 'SHEET_KEYS 缺少 ' + k));
 });
@@ -120,6 +121,36 @@ test('tabbar: 值未变化时不触发组件渲染（避免每次 setData 都白
   page.setData({ tasks: [1, 2, 3] });
   page.setData({ mode: 'parent' });
   assert.strictEqual(bar.calls, afterAttach, '无弹层状态变化 → 不应有额外的 tabBar setData');
+});
+
+test('tabbar: 五个 tab 的 4 处定义必须一致（app.json / custom-tab-bar / 各页 selected）', () => {
+  // 新增或调整 tab 顺序时，必须同步 4 处：app.json 的 pages、app.json 的 tabBar.list、
+  // custom-tab-bar 的 list、以及每个页面 onShow 里的 selected 索引。漏一处就会表现成
+  // 「点了 tab 但高亮没跟过去」。此用例把 4 处钉死。
+  const fs = require('fs');
+  const path = require('path');
+  const root = path.join(__dirname, '..', 'miniprogram');
+  const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+  const tabList = appJson.tabBar.list.map(x => String(x.pagePath).replace(/^\//, ''));
+
+  assert.deepStrictEqual(
+    appJson.pages.slice(0, tabList.length), tabList,
+    'app.json 的 pages 前 ' + tabList.length + ' 项应与 tabBar.list 顺序一致'
+  );
+
+  const barSrc = fs.readFileSync(path.join(root, 'custom-tab-bar', 'index.js'), 'utf8');
+  const barPaths = [];
+  const re = /pagePath:\s*'\/([^']+)'/g;
+  let m;
+  while ((m = re.exec(barSrc))) barPaths.push(m[1]);
+  assert.deepStrictEqual(barPaths, tabList, 'custom-tab-bar 的 list 与 app.json tabBar.list 不一致');
+
+  tabList.forEach((p, i) => {
+    const src = fs.readFileSync(path.join(root, p + '.js'), 'utf8');
+    const sm = /getTabBar\(\)\.setData\(\{\s*selected:\s*(\d+)\s*\}\)/.exec(src);
+    assert.ok(sm, p + ' 未设置 tabBar selected');
+    assert.strictEqual(Number(sm[1]), i, p + ' 的 tabBar selected 应为 ' + i + '，实际 ' + sm[1]);
+  });
 });
 
 test('tabbar: syncTabBar 可脱离 setData 单独调用（onShow 兜底重置）', () => {

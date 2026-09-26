@@ -223,6 +223,46 @@ function todayStr() { return D.ymd(new Date()); }
     return `大宝星星=${d1.totalStars}/打卡${d1.checkIns.length} 条 · 二宝星星=${d2.totalStars}/打卡${d2.checkIns.length} 条（完全隔离）· 越权切换被拒`;
   });
 
+  // ============ 验收 8：宠物（第二阶段：宠物 tab）============
+  await check(8, '宠物：领养 → 投喂(扣星星+写流水) → 抚摸(免费) → 互动统计', async () => {
+    const P = require('../miniprogram/utils/pets');
+    assert.strictEqual((await local.petCRUD({ op: 'info', childId })).pet, null, '初始应无宠物');
+
+    const ad = await local.petCRUD({
+      op: 'adopt', childId, parentToken: token, payload: { species: 'cat', name: '小灰' }
+    });
+    assert.strictEqual(ad.ok, true, '领养失败');
+    assert.strictEqual(ad.pet.stage, 1, '初始应为蛋蛋');
+    assert.strictEqual(ad.pet.mood, P.MOOD_INIT, '初始心情应为 ' + P.MOOD_INIT);
+
+    // 投喂：扣星星 + 加成长 + 加心情 + 一条 pet_feed 流水
+    const starsBefore = 20;
+    const childrenArr = store[s.KEYS.children];
+    childrenArr.find(c => c._id === childId).totalStars = starsBefore;
+    store[s.KEYS.children] = childrenArr;
+    const fd = await local.petCRUD({ op: 'feed', childId, parentToken: token });
+    assert.strictEqual(fd.ok, true, '投喂失败');
+    assert.strictEqual(fd.totalStars, starsBefore - P.PET_FEED_COST, '星星未按投喂成本扣减');
+    assert.strictEqual(fd.pet.growthValue, P.PET_GROWTH_PER_FEED, '成长值未按投喂增加');
+    const feedLog = (store[s.KEYS.pointsLog] || []).filter(x => x.refType === 'pet_feed');
+    assert.strictEqual(feedLog.length, 1, '投喂应写 1 条 pet_feed 流水');
+    assert.strictEqual(feedLog[0].delta, -P.PET_FEED_COST, '流水方向应为支出');
+
+    // 抚摸：免费（不扣星星、不写流水）
+    const sk = await local.petCRUD({ op: 'stroke', childId });
+    assert.strictEqual(sk.ok, true, '抚摸失败');
+    assert.strictEqual(sk.pet.strokeCount, 1, '抚摸次数未累计');
+    assert.strictEqual((store[s.KEYS.pointsLog] || []).filter(x => x.refType === 'pet_feed').length, 1,
+      '抚摸不应写积分流水');
+
+    // 互动统计：连续 1 天 / 累计 1 投喂 1 抚摸
+    const info = await local.petCRUD({ op: 'info', childId });
+    assert.strictEqual(info.pet.stats.streakDays, 1, '连续互动天数应为 1');
+    assert.strictEqual(info.pet.stats.feedTotal, 1, '累计投喂应为 1');
+    assert.strictEqual(info.pet.stats.strokeTotal, 1, '累计抚摸应为 1');
+    return `领养「小灰」· 投喂 -${P.PET_FEED_COST}⭐/+${P.PET_GROWTH_PER_FEED} 成长（星星 ${starsBefore}→${fd.totalStars}，1 条 pet_feed 流水）· 抚摸免费 · 连续互动 1 天`;
+  });
+
   // ============ 需人工确认的项 ============
   manual('6-UI', '首页右上角锁图标 与「我」页切换行 两处家长模式切换',
     '需人工：闭锁态点锁图标 → 弹 PIN 闸；开锁态点 → 直接关闭。属 UI 交互，脚本无法断言');
@@ -230,7 +270,7 @@ function todayStr() { return D.ymd(new Date()); }
     '需人工：数据层已确认 monthLit 正确，需肉眼确认渲染效果');
   manual('UI-全量', '三页视觉与弹层交互（新建/编辑/打卡/兑换/图标选择/日明细）',
     '需人工：按 design-小雨记-UI.html 基线核对；弹层可点蒙层与右上角 × 关闭');
-  manual('云', '云端真库链路（云开发 + 11 个云函数）',
+  manual('云', '云端真库链路（云开发 + 13 个云函数）',
     '阻塞：CLOUD_ENV 为空，当前跑本地兜底。需建集合/索引/上传云函数后复测');
 
   // ============ 输出 ============

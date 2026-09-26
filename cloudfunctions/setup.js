@@ -8,7 +8,7 @@ const path = require('path');
 const root = __dirname;
 const libDir = path.join(root, 'lib');
 const FUNCTIONS = ['login', 'unlockParent', 'getDashboard', 'checkIn', 'redeem',
-  'taskCRUD', 'rewardCRUD', 'childSwitch', 'childCRUD', 'feedCRUD', 'setPin', 'resetPin'];
+  'taskCRUD', 'rewardCRUD', 'childSwitch', 'childCRUD', 'feedCRUD', 'petCRUD', 'setPin', 'resetPin'];
 
 const pkg = (name) => JSON.stringify({
   name,

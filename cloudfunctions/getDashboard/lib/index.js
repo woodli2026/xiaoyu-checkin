@@ -7,5 +7,6 @@ module.exports = Object.assign({},
   require('./pin'),
   require('./visibility'),
   require('./checkInCore'),
-  require('./redeemCore')
+  require('./redeemCore'),
+  require('./pets')
 );

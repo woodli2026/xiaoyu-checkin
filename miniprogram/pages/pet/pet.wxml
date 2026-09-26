@@ -1,0 +1,215 @@
+<view class="page" bindtap="onAppTouch">
+  <!-- 顶部宠物信息条：头像 + 宠物名称 + 级别 + 右侧改名（参考首页 kidbar） -->
+  <view class="kidbar">
+    <view class="kid-ava"><text>{{pet ? pet.emoji : '🥚'}}</text></view>
+    <view class="kid-meta">
+      <view class="kid-name">{{pet ? pet.name : '还没有宠物'}}</view>
+      <view class="kid-sub">{{pet ? (pet.stageName + ' · Lv.' + pet.stage) : '领养后开启成长'}}</view>
+    </view>
+    <view class="pet-edit" bindtap="onPetEdit" aria-label="领养或改名">✏️</view>
+  </view>
+
+  <!-- 顶卡：星星余额 + 连续互动（点击看互动统计报表） -->
+  <view class="topcard">
+    <view class="blob b1"></view>
+    <view class="blob b2"></view>
+    <view class="starbig">
+      <text class="spk">⭐</text>
+      <text class="num">{{totalStars}}</text>
+      <text class="unit">颗星星</text>
+    </view>
+    <view class="streak" bindtap="openStats">
+      <text class="fl">🔥</text>{{streakDays}} 天连续互动<text class="go">›</text>
+    </view>
+  </view>
+
+  <!-- 宠物舞台：宠物本体 → 底部 HUD（左成长瓶 / 中技能 / 右心情瓶，暗黑式左右对称常驻） -->
+  <view class="arena">
+    <view class="deco2">🌸 🍃 ⭐ 🍃 🌸</view>
+
+    <view class="pet-stage">
+      <view class="pet-wrap" bindtap="petTap">
+        <block wx:if="{{pet}}">
+          <block wx:if="{{pet.stage === 2}}"><text class="pet-shell">🥚</text></block>
+          <block wx:if="{{pet.stage === 3}}">
+            <text class="pet-halo">✨</text>
+            <view class="pet-cheek l"></view>
+            <view class="pet-cheek r"></view>
+          </block>
+          <block wx:if="{{pet.stage === 4}}">
+            <text class="pet-medal">🌟</text>
+            <text class="pet-scarf">🧣</text>
+          </block>
+          <block wx:if="{{pet.stage === 5}}">
+            <!-- 传奇翅膀：纯 CSS 渐变羽翼（原翅膀 emoji 属非基础区段 Unicode，跨机型渲染不一致，已移除） -->
+            <view class="pet-wing l"></view>
+            <view class="pet-wing r"></view>
+            <text class="pet-crown">👑</text>
+          </block>
+        </block>
+        <text class="pet {{petCls}}">{{pet ? pet.emoji : '🥚'}}</text>
+      </view>
+      <view wx:if="{{pet && pet.stage === 1 && pet.growthValue >= 20}}" class="pet-tip">快要破壳啦 🐣</view>
+    </view>
+
+    <view wx:if="{{pet && pet.stage === 5}}" class="pet-banner">⭐ 传奇伙伴 ⭐</view>
+
+    <!-- HUD：两个玻璃瓶常驻（未领养也是空瓶）+ 居中的投喂/抚摸技能按钮 -->
+    <view class="hud2">
+      <!-- 成长瓶：玻璃心（心型玻璃，红色「血液」），按「到下一阶段」的阶段内进度填充 -->
+      <view class="flask heart">
+        <view class="body">
+          <view class="liquid growth" style="height:{{growthPct}}%">
+            <block wx:if="{{growthPct > 0}}">
+              <view class="bub b1"></view>
+              <view class="bub b2"></view>
+            </block>
+          </view>
+          <view class="shine"></view>
+          <text class="fnum">{{growthTxt}}</text>
+        </view>
+        <text class="flab">成长</text>
+      </view>
+
+      <!-- 技能按钮（放在头像框内底部中间）：投喂消耗星星 / 抚摸免费 -->
+      <view wx:if="{{pet}}" class="skills">
+        <view class="skill {{canFeed ? '' : 'disabled'}}" bindtap="feed">
+          <view class="ring">
+            <text class="ic">🍼</text>
+            <text class="cost">-{{feedCost}}⭐</text>
+          </view>
+          <text class="nm">投喂</text>
+        </view>
+        <view class="skill" bindtap="stroke">
+          <view class="ring"><text class="ic">✋</text></view>
+          <text class="nm">抚摸</text>
+        </view>
+      </view>
+      <view wx:else class="skills-empty"></view>
+
+      <!-- 心情瓶：玻璃钻石（钻石切割，蓝色「血液」），按心情 0–100 填充 -->
+      <view class="flask diamond">
+        <view class="body">
+          <view class="liquid mood" style="height:{{moodPct}}%">
+            <block wx:if="{{moodPct > 0}}">
+              <view class="bub b1"></view>
+              <view class="bub b2"></view>
+            </block>
+          </view>
+          <view class="facet"></view>
+          <view class="shine"></view>
+          <text class="fnum">{{moodTxt}}</text>
+        </view>
+        <text class="flab">心情</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 框外操作：未领养 → 领养；已领养 → 放生/重置（家长模式） -->
+  <view class="acts">
+    <button wx:if="{{!pet}}" class="btn adopt-btn" bindtap="openAdopt">🥚 领养一只小伙伴</button>
+    <view wx:elif="{{mode === 'parent'}}" class="manage-row">
+      <view class="manage-btn" bindtap="openManage">⚙️ 放生 / 重置</view>
+    </view>
+    <view wx:else class="manage-hint">放生 / 重置需家长模式</view>
+  </view>
+
+  <view class="hint">{{pet ? '点「投喂」消耗星星长大，点「抚摸」让它更开心 ✨' : '点击「领养」带一只小伙伴回家吧！'}}</view>
+  <view class="foot-tip">{{useCloud ? '云端模式' : '本地模式（未配置云环境，数据存本机）'}}</view>
+</view>
+
+<!-- 领养弹层 -->
+<view wx:if="{{showAdopt}}" class="mask" bindtap="closeAdopt">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">🥚 领养一只宠物</text>
+      <text class="sheet-x" catchtap="closeAdopt">×</text>
+    </view>
+    <view class="pet-grid">
+      <view wx:for="{{species}}" wx:key="key"
+            class="pg {{item.key === adoptSpecies ? 'on' : ''}}"
+            data-key="{{item.key}}" bindtap="pickSpecies">{{item.emoji}}</view>
+    </view>
+    <view class="field">
+      <text class="fl-label">给它起个名字（≤{{nameMax}}字）</text>
+      <input class="inp" value="{{adoptName}}" maxlength="{{nameMax}}"
+             placeholder="小猫" bindinput="onAdoptName" />
+    </view>
+    <button class="btn" bindtap="doAdopt">带它回家 🏡</button>
+  </view>
+</view>
+
+<!-- 改名弹层 -->
+<view wx:if="{{showRename}}" class="mask" bindtap="closeRename">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">✏️ 修改宠物名称</text>
+      <text class="sheet-x" catchtap="closeRename">×</text>
+    </view>
+    <view class="field">
+      <text class="fl-label">名字（≤{{nameMax}}字）</text>
+      <input class="inp" value="{{renameName}}" maxlength="{{nameMax}}"
+             placeholder="{{pet.name}}" bindinput="onRenameInput" />
+    </view>
+    <button class="btn" bindtap="doRename">保存</button>
+  </view>
+</view>
+
+<!-- 互动统计报表（点「N 天连续互动」） -->
+<view wx:if="{{showStats}}" class="mask" bindtap="closeStats">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">📈 互动统计</text>
+      <text class="sheet-x" catchtap="closeStats">×</text>
+    </view>
+    <view class="stats2">
+      <view class="st2">
+        <text class="se">🔥</text>
+        <view><view class="sv">{{streakDays}} 天</view><view class="sk">连续互动</view></view>
+      </view>
+      <view class="st2">
+        <text class="se">🍼</text>
+        <view><view class="sv">{{feedTotal}} 次</view><view class="sk">累计投喂</view></view>
+      </view>
+      <view class="st2">
+        <text class="se">✋</text>
+        <view><view class="sv">{{strokeTotal}} 次</view><view class="sk">累计抚摸</view></view>
+      </view>
+      <view class="st2">
+        <text class="se">🌟</text>
+        <view><view class="sv">+{{growthValue}}</view><view class="sk">累计成长值</view></view>
+      </view>
+    </view>
+    <view class="sec-title">本周互动</view>
+    <view class="brow">
+      <text class="bl">投喂</text>
+      <view class="btrack"><view class="bfill growth" style="width:{{weekFeedPct}}%"></view></view>
+      <text class="bv">{{weekFeed}}</text>
+    </view>
+    <view class="brow">
+      <text class="bl">抚摸</text>
+      <view class="btrack"><view class="bfill mood" style="width:{{weekStrokePct}}%"></view></view>
+      <text class="bv">{{weekStroke}}</text>
+    </view>
+    <view class="hint">投喂消耗星星换成长，抚摸免费涨心情；两者都计入连续互动天数。</view>
+  </view>
+</view>
+
+<!-- 宠物管理（放生 / 重置，家长模式） -->
+<view wx:if="{{showManage}}" class="mask" bindtap="closeManage">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-h">
+      <text class="sh-t">⚙️ 宠物管理</text>
+      <text class="sheet-x" catchtap="closeManage">×</text>
+    </view>
+    <view class="hint mg-tip">放生会送走宠物（成长清零，可重新领养）；重置保留宠物回到蛋蛋。</view>
+    <button class="btn btn-lav" bindtap="doReset">重置成长（回到蛋蛋）</button>
+    <button class="btn btn-ghost" bindtap="doRelease">放生宠物</button>
+  </view>
+</view>
+
+<!-- 撒花层 -->
+<view class="confetti-layer">
+  <view wx:for="{{confetti}}" wx:key="id" class="confetti-piece"
+        style="left:{{item.left}}%;background:{{item.color}};animation-delay:{{item.delay}}s"></view>
+</view>

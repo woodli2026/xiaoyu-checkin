@@ -25,7 +25,9 @@ const SHEET_KEYS = [
   // pages/feed
   'showDetail',
   // pages/mine
-  'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList'
+  'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList',
+  // pages/pet
+  'showAdopt', 'showRename', 'showStats', 'showManage'
 ];
 
 function getTabBar(page) {

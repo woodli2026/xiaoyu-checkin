@@ -30,7 +30,7 @@ Page({
   onShow() {
     // 自定义 tabBar 需由页面主动同步选中态（本页为第 3 个 tab，索引 2）
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 2 });
+      this.getTabBar().setData({ selected: 3 });
     }
     attachTabBarSync(this);
     this.refresh();
