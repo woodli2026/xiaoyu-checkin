@@ -2,23 +2,28 @@
 <view wx:if="{{show}}" class="ep-mask" catchtap="onMask">
   <view class="ep-panel" catchtap="noop">
     <view class="ep-head">
-      <text class="ep-title">🎨 选择{{setLabel}}</text>
+      <text class="ep-title">🎨 {{groups[active].name}} · {{setLabel}}</text>
       <text class="ep-x" catchtap="close">×</text>
     </view>
 
     <!-- 同 day-sheet：不用 scroll-view（它必须有确定 height，只给 max-height 会算成 0 高），
-         滚动交给 .ep-panel 自身；4 类各带小标题，每类 6 列 × 3 行 -->
+         滚动交给 .ep-panel 自身；参考微信表情面板：底部分类栏切换，每次只渲染当前分类 -->
     <view class="ep-body">
-      <block wx:for="{{groups}}" wx:key="name" wx:for-item="g">
-        <view class="ep-gname">{{g.name}}</view>
-        <view class="ep-grid">
-          <view wx:for="{{g.icons}}" wx:key="*this" wx:for-item="ic"
-                class="ep-cell {{ic === current ? 'on' : ''}}"
-                data-icon="{{ic}}" catchtap="pick">{{ic}}</view>
-        </view>
-      </block>
+      <view class="ep-grid">
+        <view wx:for="{{groups[active].icons}}" wx:key="*this" wx:for-item="ic"
+              class="ep-cell {{ic === current ? 'on' : ''}}"
+              data-icon="{{ic}}" catchtap="pick">{{ic}}</view>
+      </view>
     </view>
 
-    <view class="ep-close" catchtap="close">取消</view>
+    <!-- 底部分类栏：tabIcon 大图标 + 小字类名，激活项高亮 -->
+    <view class="ep-tabs">
+      <view wx:for="{{groups}}" wx:key="name" wx:for-item="g" wx:for-index="idx"
+            class="ep-tab {{idx === active ? 'on' : ''}}"
+            data-idx="{{idx}}" catchtap="switchTab">
+        <text class="ep-tab-ic">{{g.tabIcon}}</text>
+        <text class="ep-tab-name">{{g.name}}</text>
+      </view>
+    </view>
   </view>
 </view>

@@ -1,6 +1,7 @@
 /* 图标选择面板 —— 视觉基线：docs/design-雨宝记-UI.html 的 .ip-panel / .ip-grid
    6 列网格，格子 22px→42rpx，圆角 12px→23rpx，选中态为暖阳底 + 珊瑚描边
-   2026-09-18：候选按用途分两套（任务/奖励），各 72 个、分 4 类，类名小标题引导 */
+   2026-09-18：候选按用途分两套（任务/奖励）
+   2026-09-29：参考微信表情面板改版——底部分类栏切换，每套 6 类 × 24 个 */
 
 .ep-mask {
   position: fixed; inset: 0; z-index: 400;
@@ -29,9 +30,6 @@
 }
 
 .ep-body { /* 高度不再限制，滚动交给 .ep-panel */ }
-/* 分类小标题：第一类的上边距归零（block 不产生节点，.ep-gname 是 .ep-body 的直接子元素） */
-.ep-gname { font-size: 24rpx; color: #8C86A3; margin: 23rpx 4rpx 12rpx; }
-.ep-body > .ep-gname:first-child { margin-top: 0; }
 .ep-grid { display: flex; flex-wrap: wrap; gap: 15rpx; padding: 4rpx; }
 .ep-cell {
   width: calc((100% - 75rpx) / 6);
@@ -49,4 +47,26 @@
   border-color: #FF9AA2;
   box-shadow: 0 8rpx 23rpx rgba(140, 130, 170, .16);
 }
+
+/* 底部分类栏（参考微信表情面板）：横排 6 个 tab，激活项暖阳底高亮 */
+.ep-tabs {
+  display: flex; align-items: stretch;
+  margin-top: 19rpx; padding: 8rpx;
+  background: #f6f4fb; border-radius: 27rpx;
+}
+.ep-tab {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10rpx 0 8rpx; border-radius: 21rpx;
+  transition: background .15s ease;
+}
+.ep-tab.on { background: #FFE6A0; box-shadow: 0 4rpx 12rpx rgba(140, 130, 170, .14); }
+.ep-tab-ic { font-size: 40rpx; line-height: 1.2; }
+.ep-tab.on .ep-tab-ic { transform: scale(1.12); }
+.ep-tab-name {
+  margin-top: 2rpx; font-size: 18rpx; color: #8C86A3;
+  max-width: 100%; overflow: hidden; white-space: nowrap;
+}
+.ep-tab.on .ep-tab-name { color: #C96A5B; font-weight: 600; }
+
 .ep-close { margin-top: 19rpx; text-align: center; color: #8C86A3; font-size: 29rpx; padding: 15rpx; }

@@ -46,22 +46,24 @@ test('displayStreak 双份实现一致：云端 lib 与前端 domain 必须同�
   });
 });
 
-test('icons: 任务/奖励两套各 72 个、分类正确、套内不重复、全部单码位', () => {
+test('icons: 任务/奖励两套各 144 个（6 类 × 24）、分类正确、套内不重复、全部单码位、tab 齐全', () => {
   const { ICON_SETS } = require('../miniprogram/utils/icons');
   const want = {
-    task: ['活动', '自然', '旅行', '物品'],
-    reward: ['食物与饮品', '活动', '旅行', '物品']
+    task: ['活动', '学习', '生活', '自然', '旅行', '物品'],
+    reward: ['食物与饮品', '玩乐', '活动', '旅行', '物品', '装扮']
   };
+  const singleCodepoint = (ic) => Array.from(ic.replace(/\uFE0F/g, '')).length === 1;
   Object.keys(want).forEach((kind) => {
     const groups = ICON_SETS[kind];
     assert.deepStrictEqual(groups.map(g => g.name), want[kind], kind + ' 的分类须为 ' + want[kind].join('/'));
     const all = [];
     groups.forEach((g) => {
-      assert.strictEqual(g.icons.length, 18, kind + '/' + g.name + ' 应为 18 个');
+      assert.strictEqual(g.icons.length, 24, kind + '/' + g.name + ' 应为 24 个');
+      assert.ok(g.tabIcon && singleCodepoint(g.tabIcon), kind + '/' + g.name + ' 分类栏 tabIcon 须为单码位 emoji');
       all.push(...g.icons);
     });
-    assert.strictEqual(all.length, 72, kind + ' 应为 72 个');
-    assert.strictEqual(new Set(all).size, 72, kind + ' 套内图标不得重复');
+    assert.strictEqual(all.length, 144, kind + ' 应为 144 个');
+    assert.strictEqual(new Set(all).size, 144, kind + ' 套内图标不得重复');
     all.forEach((ic) => {
       assert.ok(!/[\u200D]/.test(ic), '不得含 ZWJ 组合: ' + ic);
       assert.strictEqual(Array.from(ic.replace(/\uFE0F/g, '')).length, 1, '应为单码位 emoji: ' + ic);
