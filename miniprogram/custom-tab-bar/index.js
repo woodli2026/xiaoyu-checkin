@@ -1,6 +1,6 @@
 // custom-tab-bar —— 自定义底部导航
 // 为什么自定义：原生 tabBar 的字号由微信固定（约 20rpx），无法调大，也无法用自定义图标。
-// 视觉基线：design-雨宝记-UI.html 的 .tabbar / .tab（选中色为珊瑚粉）。
+// 视觉基线：docs/design-雨宝记-UI.html 的 .tabbar / .tab（选中色为珊瑚粉）。
 // 图标：Phosphor Icons（Fill，MIT），已按「未选中 #8C86A3 / 选中 #FF9AA2」各导出一份
 //       SVG 放在 /images/tabbar/，颜色直接烘焙进文件，故选中态只需换 src，无需运行时改色。
 Component({

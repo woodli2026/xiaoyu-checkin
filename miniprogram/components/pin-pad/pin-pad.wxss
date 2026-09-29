@@ -1,4 +1,4 @@
-/* 视觉基线：design-雨宝记-UI.html 的 .pin-overlay（全屏渐变 + 白点 + 白色数字键盘） */
+/* 视觉基线：docs/design-雨宝记-UI.html 的 .pin-overlay（全屏渐变 + 白点 + 白色数字键盘） */
 
 .pp-overlay {
   position: fixed; inset: 0; z-index: 500;

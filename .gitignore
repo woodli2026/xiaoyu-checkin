@@ -4,8 +4,8 @@ node_modules/
 # 项目记忆与会话数据（含本机路径、调试记录，属本地资产，不入库）
 .workbuddy/
 
-# 含真实云函数密钥（XY_TOKEN_SECRET / XY_PIN_SALT），仅留本地，禁止入库
-README-小程序.md
+# 项目文档统一迁入 docs/，按用户要求不再提交 git（含 README-小程序.md 中的真实云密钥 XY_TOKEN_SECRET / XY_PIN_SALT）
+docs/
 
 # 自动化截图产物
 tools/shots/

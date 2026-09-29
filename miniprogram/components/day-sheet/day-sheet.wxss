@@ -1,4 +1,4 @@
-/* 日明细弹层 —— 视觉基线：design-雨宝记-UI.html 的 .sheet + .task-row
+/* 日明细弹层 —— 视觉基线：docs/design-雨宝记-UI.html 的 .sheet + .task-row
    设计稿基准 390px → 1px ≈ 1.923rpx：sheet 圆角 28px→54rpx，task-row 圆角 18px→35rpx，
    图标底 42px→81rpx，勾选环 26px→50rpx */
 
