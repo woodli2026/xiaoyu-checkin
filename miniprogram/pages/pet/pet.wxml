@@ -1,10 +1,14 @@
 <view class="page" bindtap="onAppTouch">
   <!-- 顶部宠物信息条：头像 + 宠物名称 + 级别 + 右侧改名（参考首页 kidbar） -->
   <view class="kidbar">
-    <view class="kid-ava"><text>{{pet ? pet.emoji : '🥚'}}</text></view>
+    <view class="kid-ava">
+      <!-- 头像用品种全身图（圆形裁剪）；未领养保持蛋占位 -->
+      <image wx:if="{{pet}}" class="kid-ava-img" src="{{petImg}}" mode="aspectFill" />
+      <text wx:else>🥚</text>
+    </view>
     <view class="kid-meta">
       <view class="kid-name">{{pet ? pet.name : '还没有宠物'}}</view>
-      <view class="kid-sub">{{pet ? (pet.stageName + ' · Lv.' + pet.stage) : '领养后开启成长'}}</view>
+      <view class="kid-sub">{{pet ? (breedName + ' · ' + pet.stageName + ' · Lv.' + pet.stage) : '领养后开启成长'}}</view>
     </view>
     <view class="pet-edit" bindtap="onPetEdit" aria-label="领养或改名">✏️</view>
   </view>
@@ -27,37 +31,42 @@
   <view class="arena">
     <view class="deco2">🌸 🍃 ⭐ 🍃 🌸</view>
 
-    <view class="pet-stage">
-      <view class="pet-wrap" bindtap="petTap">
-        <block wx:if="{{pet}}">
-          <block wx:if="{{pet.stage === 2}}"><text class="pet-shell">🥚</text></block>
-          <block wx:if="{{pet.stage === 3}}">
-            <text class="pet-halo">✨</text>
-            <view class="pet-cheek l"></view>
-            <view class="pet-cheek r"></view>
-          </block>
-          <block wx:if="{{pet.stage === 4}}">
-            <text class="pet-medal">🌟</text>
-            <text class="pet-scarf">🧣</text>
-          </block>
-          <block wx:if="{{pet.stage === 5}}">
-            <!-- 传奇翅膀：纯 CSS 渐变羽翼（原翅膀 emoji 属非基础区段 Unicode，跨机型渲染不一致，已移除） -->
-            <view class="pet-wing l"></view>
-            <view class="pet-wing r"></view>
-            <text class="pet-crown">👑</text>
-          </block>
-        </block>
-        <text class="pet {{petCls}}">{{pet ? pet.emoji : '🥚'}}</text>
+    <block wx:if="{{pet}}">
+      <view class="pet-stage">
+        <view class="pet-wrap {{animType === 'stroke' ? 'pet-stroking' : ''}} {{animType === 'feed' ? 'pet-eating' : ''}} {{animPhase}}" bindtap="petTap">
+          <!-- 本体：两档形态 + 动作差分图（petSrc 由 pet.js 预计算：互动时切 _happy/_eat 表情图，
+               结束切回默认；待机 wob/sway 保留）。配饰已全部废弃（2026-09 拍板） -->
+          <view class="pet-scale {{petCls}}">
+            <image class="pet pet-img {{petCls}}" src="{{petSrc}}" mode="aspectFit" />
+          </view>
+          <!-- 抚摸动画：CSS 自绘卡通小手（从头顶上方降入轻抚，phase 交替强制重播，禁用 emoji 手） -->
+          <view wx:if="{{animType === 'stroke'}}" class="pet-hand {{animPhase}}"></view>
+          <!-- 投喂：无独立食盆叠加图（_eat 差分图已含食盆，避免重影）；仅 petSrc 切 _eat 图 + 粒子 -->
+          <!-- 互动粒子：抚摸=爱心 / 投喂=金星（≤3 个，宠物上方区域随机偏移，上浮淡出） -->
+          <view wx:for="{{animFx}}" wx:key="id" class="anim-fx"
+                style="left:{{item.left}}%;top:{{item.top}}%;animation-delay:{{item.delay}}s">
+            <view class="fx {{item.kind}}"></view>
+          </view>
+        </view>
+        <view wx:if="{{pet.stage === 1 && pet.growthValue >= 2700}}" class="pet-tip">快要长大啦 🌟</view>
       </view>
-      <view wx:if="{{pet && pet.stage === 1 && pet.growthValue >= 20}}" class="pet-tip">快要破壳啦 🐣</view>
+    </block>
+    <!-- 未领养：主区直接渲染领养选择卡（物种二选一页内横排，取代旧「🥚 + 框外按钮 + 领养弹层」流程） -->
+    <view wx:else class="adopt-card">
+      <view class="adopt-title">🐾 领养一只小伙伴</view>
+      <view class="pet-grid">
+        <view wx:for="{{adoptOptions}}" wx:key="key"
+              class="pg" data-key="{{item.key}}" bindtap="pickSpecies">{{item.emoji}}</view>
+      </view>
+      <view class="adopt-breed-hint">领养后随机获得 5 种品种之一，品种即花色，终身不变</view>
     </view>
-
-    <view wx:if="{{pet && pet.stage === 5}}" class="pet-banner">⭐ 传奇伙伴 ⭐</view>
 
     <!-- HUD：两个玻璃瓶常驻（未领养也是空瓶）+ 居中的投喂/抚摸技能按钮 -->
     <view class="hud2">
       <!-- 成长瓶：玻璃心（心型玻璃，红色「血液」），按「到下一阶段」的阶段内进度填充 -->
       <view class="flask heart">
+        <!-- 互动浮动数值：投喂成功 → 「+N 经验」在瓶上方上浮淡出（无背景） -->
+        <text wx:if="{{animType === 'feed'}}" class="growth-float {{animPhase}}">{{floatText}}</text>
         <view class="body">
           <view class="liquid growth" style="height:{{growthPct}}%">
             <block wx:if="{{growthPct > 0}}">
@@ -73,10 +82,10 @@
 
       <!-- 技能按钮（放在头像框内底部中间）：投喂消耗星星 / 抚摸免费 -->
       <view wx:if="{{pet}}" class="skills">
-        <view class="skill {{canFeed ? '' : 'disabled'}}" bindtap="feed">
+        <view class="skill {{(canFeed && !feedLimited) ? '' : 'disabled'}}" bindtap="feed">
           <view class="ring">
             <text class="ic">🍼</text>
-            <text class="cost">-{{feedCost}}⭐</text>
+            <text class="cost">{{feedLimited ? '已喂 ' + todayFeedCount + '/' + feedDailyLimit : '-' + feedCost + '⭐'}}</text>
           </view>
           <text class="nm">投喂</text>
         </view>
@@ -89,6 +98,8 @@
 
       <!-- 心情瓶：玻璃钻石（钻石切割，蓝色「血液」），按心情 0–100 填充 -->
       <view class="flask diamond">
+        <!-- 互动浮动数值：抚摸成功 → 「+N 心情」在瓶上方上浮淡出（无背景） -->
+        <text wx:if="{{animType === 'stroke'}}" class="mood-float {{animPhase}}">{{floatText}}</text>
         <view class="body">
           <view class="liquid mood" style="height:{{moodPct}}%">
             <block wx:if="{{moodPct > 0}}">
@@ -105,33 +116,28 @@
     </view>
   </view>
 
-  <!-- 框外操作：未领养 → 领养；已领养 → 放生/重置（家长模式） -->
+  <!-- 框外操作：已领养 → 放生/重置（家长模式）；未领养 → 领养选择卡已在主区，此处留空 -->
   <view class="acts">
-    <button wx:if="{{!pet}}" class="btn adopt-btn" bindtap="openAdopt">🥚 领养一只小伙伴</button>
-    <view wx:elif="{{mode === 'parent'}}" class="manage-row">
+    <view wx:if="{{pet && mode === 'parent'}}" class="manage-row">
       <view class="manage-btn" bindtap="openManage">⚙️ 放生 / 重置</view>
     </view>
-    <view wx:else class="manage-hint">放生 / 重置需家长模式</view>
+    <view wx:elif="{{pet}}" class="manage-hint">放生 / 重置需家长模式</view>
   </view>
 
-  <view class="hint">{{pet ? '点「投喂」消耗星星长大，点「抚摸」让它更开心 ✨' : '点击「领养」带一只小伙伴回家吧！'}}</view>
+  <view class="hint">{{pet ? '点「投喂」消耗星星长大，点「抚摸」让它更开心 ✨' : '选一只猫猫或狗狗，把它带回家吧！'}}</view>
   <view class="foot-tip">{{useCloud ? '云端模式' : '本地模式（未配置云环境，数据存本机）'}}</view>
 </view>
 
-<!-- 领养弹层 -->
-<view wx:if="{{showAdopt}}" class="mask" bindtap="closeAdopt">
+<!-- 起名弹层（领养流程第二步：主区点物种卡片 → 起名 → 确认即领养；旧领养弹层不再回归） -->
+<view wx:if="{{showName}}" class="mask" bindtap="closeName">
   <view class="sheet" catchtap="noop">
     <view class="sheet-h">
-      <text class="sh-t">🥚 领养一只宠物</text>
-      <text class="sheet-x" catchtap="closeAdopt">×</text>
+      <text class="sh-t">{{adoptSpeciesEmoji}} 给它起个名字</text>
+      <text class="sheet-x" catchtap="closeName">×</text>
     </view>
-    <view class="pet-grid">
-      <view wx:for="{{species}}" wx:key="key"
-            class="pg {{item.key === adoptSpecies ? 'on' : ''}}"
-            data-key="{{item.key}}" bindtap="pickSpecies">{{item.emoji}}</view>
-    </view>
+    <view class="adopt-breed-hint">领养后随机获得 5 种品种之一，品种即花色，终身不变</view>
     <view class="field">
-      <text class="fl-label">给它起个名字（≤{{nameMax}}字）</text>
+      <text class="fl-label">名字（≤{{nameMax}}字）</text>
       <input class="inp" value="{{adoptName}}" maxlength="{{nameMax}}"
              placeholder="小猫" bindinput="onAdoptName" />
     </view>
@@ -202,8 +208,8 @@
       <text class="sh-t">⚙️ 宠物管理</text>
       <text class="sheet-x" catchtap="closeManage">×</text>
     </view>
-    <view class="hint mg-tip">放生会送走宠物（成长清零，可重新领养）；重置保留宠物回到蛋蛋。</view>
-    <button class="btn btn-lav" bindtap="doReset">重置成长（回到蛋蛋）</button>
+    <view class="hint mg-tip">放生会送走宠物（成长清零，可重新领养）；重置保留宠物回到幼崽。</view>
+    <button class="btn btn-lav" bindtap="doReset">重置成长（回到幼崽）</button>
     <button class="btn btn-ghost" bindtap="doRelease">放生宠物</button>
   </view>
 </view>

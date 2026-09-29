@@ -1,4 +1,4 @@
-# 小雨记（xiaoyu-checkin）AI 记忆管理方案
+# 雨宝记（xiaoyu-checkin）AI 记忆管理方案
 
 > 版本：v1.0 · 制定日期：2026-09-23
 > 适用对象：在 WorkBuddy 中维护 / 升级本项目的 AI 代理（以及接手的人工协作者）
@@ -116,7 +116,7 @@
 
 - 长期记忆：`.workbuddy/memory/MEMORY.md`（唯一，不按日期拆分）。
 - 每日日志：`.workbuddy/memory/YYYY-MM-DD.md`（UTC+8 日期，append-only，可删）。
-- 项目文档命名已约定：`PRD-小雨学习打卡笔记.md`、`PLAN-小雨记-*.md`、`PLAN-宠物与积分.md`、`design-*.html`、`ACCEPTANCE-MVP.md`、`README-小程序.md`、`PUBLISH-GitHub.md`、`隐私保护指引-模板.md`、`MP后台-隐私指引-填报版.md`。
+- 项目文档命名已约定：`PRD-雨宝学习打卡笔记.md`、`PLAN-雨宝记-*.md`、`PLAN-宠物与积分.md`、`design-*.html`、`ACCEPTANCE-MVP.md`、`README-小程序.md`、`PUBLISH-GitHub.md`、`隐私保护指引-模板.md`、`MP后台-隐私指引-填报版.md`。
 - 本方案自身：`AI记忆管理方案.md`（项目根，纳入 git 跟踪；并在 `MEMORY.md` 末尾加一行指针）。
 
 ---
@@ -145,7 +145,7 @@
 ## 附 A：MEMORY.md 骨架模板
 
 ```
-# 小雨记 项目长期记忆
+# 雨宝记 项目长期记忆
 ## 性质
 ## 工程约定
 ## 关键设计决策（勿反复）

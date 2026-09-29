@@ -1,7 +1,7 @@
 {
   "name": "feedCRUD",
   "version": "1.0.0",
-  "description": "小雨记云函数 - feedCRUD",
+  "description": "雨宝记云函数 - feedCRUD",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

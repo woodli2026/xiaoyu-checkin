@@ -51,7 +51,7 @@ async function shot(page, name) {
 }
 
 (async () => {
-  console.log('════ 小雨记 UI 自动化验收 ════');
+  console.log('════ 雨宝记 UI 自动化验收 ════');
 
   const automator = loadAutomator();
   if (!automator) {

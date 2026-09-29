@@ -107,9 +107,11 @@ test('tabbar: 三个页面用到的弹层字段都被 SHEET_KEYS 覆盖', () => 
     'showDay', 'showPin', 'showRedeem', 'showPrivacy',  // home
     'showDetail',                                       // feed
     'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList', // mine
-    'showAdopt', 'showRename', 'showStats', 'showManage' // pet
+    'showName', 'showRename', 'showStats', 'showManage' // pet
   ];
   need.forEach(k => assert.ok(SHEET_KEYS.includes(k), 'SHEET_KEYS 缺少 ' + k));
+  // 领养弹层已下线（未领养态改为主区选择卡 + showName 起名弹层两步）：showAdopt 不应再登记
+  assert.strictEqual(SHEET_KEYS.includes('showAdopt'), false, 'showAdopt 弹层已下线，不应留在 SHEET_KEYS');
 });
 
 test('tabbar: 值未变化时不触发组件渲染（避免每次 setData 都白刷一次）', () => {

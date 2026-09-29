@@ -1,0 +1,6 @@
+/* privacy-sheet 专属样式（.mask/.sheet/.btn 骨架来自 app.wxss，经 apply-shared 生效） */
+.privacy { text-align: left; }
+.pv-title { font-size: 37rpx; color: var(--ink); text-align: center; margin-bottom: 23rpx; }
+.pv-body { font-size: 28rpx; color: var(--ink); line-height: 1.75; margin-bottom: 31rpx; }
+.pv-link { color: #F0777F; text-decoration: underline; }
+.pv-btn { width: 100%; }

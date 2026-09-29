@@ -7,29 +7,48 @@ const U = require('./util');
 const S = require('./streak');
 const D = Object.assign({}, U, S);   // 前端对应 require('../utils/domain')
 
-// MVP 仅猫、狗两种；后续扩动物只在此追加条目（结构已可扩展）
+// 品种即花色（2026-09 升级）：领养时选物种（cat/dog），品种在物种内随机 5 选 1 入库。
+// SPECIES 为 10 个品种 key（5 猫 / 5 狗）；emoji 保留作兜底渲染与老弹层文案。
+// imgBaby/imgAdult 为两档形态图路径（云函数用不到，仅为与前端 utils/pets.js 逐字段一致，防漂移守卫比对）。
 const SPECIES = [
+  { key: 'cat_lihua',    species: 'cat', name: '狸花猫',   emoji: '🐱', imgBaby: '/images/pets/cat_lihua_baby.png',   imgAdult: '/images/pets/cat_lihua_adult.png' },
+  { key: 'cat_orange',   species: 'cat', name: '橘猫',     emoji: '🐱', imgBaby: '/images/pets/cat_orange_baby.png',  imgAdult: '/images/pets/cat_orange_adult.png' },
+  { key: 'cat_british',  species: 'cat', name: '英短蓝猫', emoji: '🐱', imgBaby: '/images/pets/cat_british_baby.png', imgAdult: '/images/pets/cat_british_adult.png' },
+  { key: 'cat_american', species: 'cat', name: '美短银虎斑', emoji: '🐱', imgBaby: '/images/pets/cat_american_baby.png', imgAdult: '/images/pets/cat_american_adult.png' },
+  { key: 'cat_ragdoll',  species: 'cat', name: '布偶猫',   emoji: '🐱', imgBaby: '/images/pets/cat_ragdoll_baby.png', imgAdult: '/images/pets/cat_ragdoll_adult.png' },
+  { key: 'dog_yellow',   species: 'dog', name: '田园犬黄', emoji: '🐶', imgBaby: '/images/pets/dog_yellow_baby.png',  imgAdult: '/images/pets/dog_yellow_adult.png' },
+  { key: 'dog_labrador', species: 'dog', name: '拉布拉多', emoji: '🐶', imgBaby: '/images/pets/dog_labrador_baby.png', imgAdult: '/images/pets/dog_labrador_adult.png' },
+  { key: 'dog_shepherd', species: 'dog', name: '牧羊犬',   emoji: '🐶', imgBaby: '/images/pets/dog_shepherd_baby.png', imgAdult: '/images/pets/dog_shepherd_adult.png' },
+  { key: 'dog_poodle',   species: 'dog', name: '贵宾犬',   emoji: '🐶', imgBaby: '/images/pets/dog_poodle_baby.png',  imgAdult: '/images/pets/dog_poodle_adult.png' },
+  { key: 'dog_beagle',   species: 'dog', name: '比格犬',   emoji: '🐶', imgBaby: '/images/pets/dog_beagle_baby.png',  imgAdult: '/images/pets/dog_beagle_adult.png' }
+];
+
+// 物种二选一弹层仍用组口径（cat/dog）：组默认名沿用旧文案（小猫/小狗）
+const SPECIES_GROUPS = [
   { key: 'cat', emoji: '🐱', defName: '小猫' },
   { key: 'dog', emoji: '🐶', defName: '小狗' }
 ];
 
+// 老 key 兼容默认品种（读取时映射，不改写历史数据）：cat→狸花猫、dog→田园犬黄
+const DEFAULT_BREED_KEY = { cat: 'cat_lihua', dog: 'dog_yellow' };
+
 const PET_FEED_COST = 5;            // 投喂消耗星星
 const PET_GROWTH_PER_FEED = 10;     // 每次投喂 +10 成长值
-const GROWTH_MAX = 300;             // 传奇伙伴阈值 = 成长「血条」总框（当前经验进度作为当前血量）
-const MOOD_INIT = 80;               // 领养初始心情
+const GROWTH_MAX = 300;            // 成年阈值 = 成长「血条」总框（当前经验进度作为当前血量）
+const MOOD_INIT = 60;               // 领养初始心情（2026-09 调整：80 → 60）
 const MOOD_PER_FEED = 8;            // 投喂 +8 心情
 const MOOD_PER_STROKE = 6;          // 抚摸 +6 心情（免费互动）
 const MOOD_MAX = 100;
-const MOOD_DECAY_PER_MIN = 0.05;    // 久不互动：约每 20 分钟 -1
+const MOOD_DECAY_PER_HOUR = 1;      // 久不互动：每小时 -1（不足 1 小时不扣；2026-09 调整：原每 20 分钟 -1 放慢）
+const PET_FEED_DAILY_LIMIT = 3;     // 每日有效投喂上限（3 次 = 30 成长值/天），达限返回 FEED_LIMIT
 const PET_NAME_MAX = 8;
 const DAILY_KEEP_DAYS = 60;         // daily 按日统计保留天数（防无限增长）
 
+// 阶段制两档（2026-09 拍板）：幼崽（0-299）→ 成年（300 起，投喂 +10/次）。
+// 原「破壳/成长体/成年体/传奇伙伴」中间阶段与全部配饰废弃。
 const STAGES = [
-  { stage: 1, name: '蛋蛋', min: 0, max: 29 },
-  { stage: 2, name: '破壳幼崽', min: 30, max: 79 },
-  { stage: 3, name: '成长体', min: 80, max: 159 },
-  { stage: 4, name: '成年体', min: 160, max: 299 },
-  { stage: 5, name: '传奇伙伴', min: 300, max: Infinity }
+  { stage: 1, name: '幼崽', min: 0, max: 299 },
+  { stage: 2, name: '成年', min: 300, max: Infinity }
 ];
 
 function speciesOf(key) {
@@ -40,22 +59,51 @@ function isValidSpecies(key) {
   return !!speciesOf(key);
 }
 
+function groupOf(key) {
+  return SPECIES_GROUPS.find(g => g.key === key) || null;
+}
+
+function isValidSpeciesGroup(key) {
+  return !!groupOf(key);
+}
+
+// 老 key 兼容（读取时映射，不改写历史数据）：
+//   品种 key → 原样；'cat'/'dog' → 物种默认品种；未知 key → 按前缀猜物种后兜底
+//   （无法识别前缀时兜底猫默认品种，保证渲染永不落空）
+function resolveSpeciesKey(key) {
+  const k = String(key == null ? '' : key).trim();
+  if (speciesOf(k)) return k;
+  if (k.indexOf('dog') === 0) return DEFAULT_BREED_KEY.dog;
+  return DEFAULT_BREED_KEY.cat;
+}
+
+// 领养随机：物种组（'cat'|'dog'）内 5 选 1，返回品种 key。
+// rng 可注入（单测确定性）；默认 Math.random。
+function randomBreedKey(species, rng) {
+  const pool = SPECIES.filter(s => s.species === species);
+  if (!pool.length) return DEFAULT_BREED_KEY.cat;
+  const r = typeof rng === 'function' ? rng : Math.random;
+  return pool[Math.floor(r() * pool.length) % pool.length].key;
+}
+
 // stage 由 growthValue 派生，不入库（防漂移）
-// 2026-09-19 调整：新增「阶段内进度」stagePct —— 成长瓶按「到下一阶段还差多少」填充，
-// 每投喂一次液面上升 1/(阶段所需投喂次数)，反馈可见；满级（传奇）恒为满瓶。
+// 阶段内进度 stagePct：成长瓶按「到下一阶段还差多少」填充，每投喂一次液面上升
+// 1/(阶段所需成长值/10)，反馈可见。两档制下只有幼崽段有下一阶段：
+// 成年段 stageNeed=null（页面显示 MAX）、stagePct 恒 100（瓶满）、stageHave 继续累计（g-300，仅数据口径）。
 function stageInfo(growthValue, speciesKey) {
   const g = Number(growthValue) || 0;
-  const sp = speciesOf(speciesKey) || SPECIES[0];
+  // 经 resolveSpeciesKey 兼容老数据（species='cat'/'dog'）与未知 key
+  const sp = speciesOf(resolveSpeciesKey(speciesKey)) || SPECIES[0];
   const st = STAGES.find(x => g >= x.min && g <= x.max) || STAGES[STAGES.length - 1];
-  const next = st.stage < 5 ? STAGES[st.stage] : null;
+  const next = st.stage < STAGES.length ? STAGES[st.stage] : null;
   const stageHave = g - st.min;                       // 本阶段内已获得的成长值
   const stageNeed = next ? next.min - st.min : null;  // 升到下一阶段共需的成长值（满级为 null）
   const stagePct = next ? Math.min(100, Math.max(0, stageHave / stageNeed * 100)) : 100;
   return {
     stage: st.stage,
     name: st.name,
-    // 蛋蛋阶段显示蛋，其余显示物种 emoji
-    emoji: st.stage === 1 ? '🥚' : sp.emoji,
+    // 两档制本体均为品种图，emoji 字段仅作数据兼容保留（物种 emoji，不再有蛋形态）
+    emoji: sp.emoji,
     speciesEmoji: sp.emoji,
     growthValue: g,
     growthPct: Math.min(100, g / GROWTH_MAX * 100),
@@ -73,20 +121,21 @@ function isValidPetName(name) {
 function normalizePetName(name, speciesKey) {
   const v = String(name == null ? '' : name).trim();
   if (v) return v;
-  const sp = speciesOf(speciesKey);
-  return sp ? sp.defName : '小伙伴';
+  const sp = speciesOf(resolveSpeciesKey(speciesKey));
+  return sp ? sp.name : '小伙伴';
 }
 
 function clampMood(v) {
   return Math.max(0, Math.min(MOOD_MAX, Math.round(v)));
 }
 
-// 按真实时间衰减：久不互动缓慢下降；无 lastMoodAt 时不衰减
+// 按真实时间衰减：久不互动缓慢下降；无 lastMoodAt 时不衰减。
+// 每小时 -1，不足 1 小时不扣（floor）；时钟回拨（now < lastMoodAt）时 Math.max(0, ...) 保证不因负时长反而加心情。
 function applyMoodDecay(mood, lastMoodAt, now) {
   const m = (mood == null) ? MOOD_INIT : Number(mood);
   if (!lastMoodAt) return clampMood(m);
-  const mins = (Number(now) - Number(lastMoodAt)) / 60000;
-  return clampMood(Math.max(0, m - mins * MOOD_DECAY_PER_MIN));
+  const hours = Math.max(0, Math.floor((Number(now) - Number(lastMoodAt)) / 3600000));
+  return clampMood(Math.max(0, m - hours * MOOD_DECAY_PER_HOUR));
 }
 
 function moodAfterFeed(mood, lastMoodAt, now) {
@@ -147,11 +196,13 @@ function computePetStats(pet, today) {
 }
 
 module.exports = {
-  SPECIES, STAGES,
+  SPECIES, SPECIES_GROUPS, DEFAULT_BREED_KEY, STAGES,
   PET_FEED_COST, PET_GROWTH_PER_FEED, GROWTH_MAX,
-  MOOD_INIT, MOOD_PER_FEED, MOOD_PER_STROKE, MOOD_MAX, MOOD_DECAY_PER_MIN,
+  MOOD_INIT, MOOD_PER_FEED, MOOD_PER_STROKE, MOOD_MAX, MOOD_DECAY_PER_HOUR,
+  PET_FEED_DAILY_LIMIT,
   PET_NAME_MAX, DAILY_KEEP_DAYS,
-  speciesOf, isValidSpecies, stageInfo,
+  speciesOf, isValidSpecies, groupOf, isValidSpeciesGroup,
+  resolveSpeciesKey, randomBreedKey, stageInfo,
   isValidPetName, normalizePetName,
   clampMood, applyMoodDecay, moodAfterFeed, moodAfterStroke,
   interactionStreak, bumpDaily, pruneDaily, weekTotals, computePetStats

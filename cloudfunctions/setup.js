@@ -13,7 +13,7 @@ const FUNCTIONS = ['login', 'unlockParent', 'getDashboard', 'checkIn', 'redeem',
 const pkg = (name) => JSON.stringify({
   name,
   version: '1.0.0',
-  description: '小雨记云函数 - ' + name,
+  description: '雨宝记云函数 - ' + name,
   main: 'index.js',
   dependencies: { 'wx-server-sdk': '~2.6.3' }
 }, null, 2) + '\n';

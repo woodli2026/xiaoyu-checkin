@@ -132,18 +132,8 @@
   </view>
 </view>
 
-<!-- 隐私协议（首次启动，官方隐私接口 wx.getPrivacySetting / agreePrivacyAuthorization） -->
-<view wx:if="{{showPrivacy}}" class="mask">
-  <view class="sheet privacy">
-    <view class="pv-title">欢迎使用小雨记 🌧️</view>
-    <view class="pv-body">
-      「小雨记」需要获取你的微信账号信息以创建家庭习惯养成账号，并记录孩子的打卡与成长数据，用于展示激励看板。我们仅收集必要信息，不收集手机号、位置等无关数据。点击「同意并继续」即表示你理解并同意
-      <text class="pv-link" bindtap="openPrivacyContract">《用户隐私保护指引》</text>。
-    </view>
-    <button class="btn pv-btn" open-type="agreePrivacyAuthorization"
-            bindagreeprivacyauthorization="agreePrivacy" bindtap="agreePrivacy">同意并继续</button>
-  </view>
-</view>
+<!-- 隐私协议（首次启动）：公共组件 privacy-sheet（mine 页选图就地授权同款，见 components/privacy-sheet） -->
+<privacy-sheet show="{{showPrivacy}}" bindagreed="agreePrivacy" />
 
 <!-- 撒花层 -->
 <view class="confetti-layer">

@@ -2,9 +2,9 @@
   "name": "xiaoyu-checkin",
   "version": "1.0.0",
   "private": true,
-  "description": "小雨学习打卡笔记（小雨记）—— 微信原生小程序 + 云开发",
+  "description": "雨宝学习打卡笔记（雨宝记）—— 微信原生小程序 + 云开发",
   "scripts": {
-    "test": "node --test __tests__/core.test.js __tests__/seed.test.js __tests__/local.test.js __tests__/tabbar.test.js __tests__/pet.test.js",
+    "test": "node --test __tests__/core.test.js __tests__/seed.test.js __tests__/local.test.js __tests__/tabbar.test.js __tests__/pet.test.js __tests__/privacy.test.js",
     "acceptance": "node tools/acceptance.js",
     "ui-acceptance": "node tools/ui-acceptance.js",
     "check": "node tools/check-syntax.js",

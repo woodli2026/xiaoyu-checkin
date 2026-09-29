@@ -4,7 +4,7 @@
     <view class="kid-ava">{{user.avatar}}</view>
     <view class="kid-meta">
       <view class="kid-name">家长中心</view>
-      <view class="kid-sub">小雨记 · v{{version}}</view>
+      <view class="kid-sub">雨宝记 · v{{version}}</view>
     </view>
   </view>
 
@@ -67,7 +67,7 @@
     </view>
     <view class="me-row" bindtap="openAbout">
       <text class="me-ic">ℹ️</text>
-      <view class="me-tx"><view>关于小雨记</view></view>
+      <view class="me-tx"><view>关于雨宝记</view></view>
       <text class="ar">v{{version}}</text>
     </view>
     <view class="me-row" bindtap="copyInvite">
@@ -206,9 +206,12 @@
 <view wx:if="{{showAbout}}" class="mask" bindtap="closeAbout">
   <view class="sheet about" catchtap="noop">
     <text class="ab-emoji">🌧️</text>
-    <view class="sheet-h center"><text class="sh-t">小雨记</text></view>
+    <view class="sheet-h center"><text class="sh-t">雨宝记</text></view>
     <view class="ab-ver">版本 v{{version}}</view>
     <view class="ab-desc">专为小学生设计的家庭习惯养成小程序。以星星激励，把「家长布置 → 孩子打卡 → 攒星星 → 兑奖励」串成正向闭环。</view>
     <view class="m-close" bindtap="closeAbout">关闭</view>
   </view>
 </view>
+
+<!-- 隐私授权弹层（公共组件）：选头像照片时就地授权，同意后原地继续打开相册 -->
+<privacy-sheet show="{{showPrivacy}}" bindagreed="onPrivacyAgreed" />

@@ -1,0 +1,12 @@
+<!-- 官方隐私授权弹层（show 属性驱动；页面监听 bindagreed 关闭并继续业务） -->
+<view wx:if="{{show}}" class="mask">
+  <view class="sheet privacy" catchtap="noop">
+    <view class="pv-title">欢迎使用雨宝记 🌧️</view>
+    <view class="pv-body">
+      「雨宝记」需要获取你的微信账号信息以创建家庭习惯养成账号，并在你为宝宝设置头像时访问手机相册中的照片。我们仅收集必要信息，不收集手机号、位置等无关数据。点击「同意并继续」即表示你理解并同意
+      <text class="pv-link" bindtap="openPrivacyContract">《用户隐私保护指引》</text>。
+    </view>
+    <button id="privacy-agree-btn" class="btn pv-btn" open-type="agreePrivacyAuthorization"
+            bindagreeprivacyauthorization="agreePrivacy">同意并继续</button>
+  </view>
+</view>

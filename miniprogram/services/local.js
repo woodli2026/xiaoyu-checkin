@@ -665,15 +665,22 @@ async function feedCRUD({ op, limit, skip, id, parentToken }) {
 //   ③ 投喂消耗星星 → 需家长令牌，并写一条 refType='pet_feed' 的积分流水；
 //   ④ 抚摸免费 → 免家长令牌（孩子也能玩），不扣星星、不写流水；
 //   ⑤ 统计（连续互动/累计投喂·抚摸/近 7 天）由 pet 内的 feedCount/strokeCount/daily 现算。
+//   ⑥ 投喂每日上限 PET_FEED_DAILY_LIMIT 次/天（复用 pet.daily[today].feed 计数），达限返回 FEED_LIMIT 不扣星。
 function findPet(childId) {
   return (allPets() || []).find(p => p.childId === childId && !p.released) || null;
 }
 
 function petView(pet, today) {
   if (!pet) return null;
-  const info = P.stageInfo(pet.growthValue, pet.species);
+  // 老 key 兼容：读取时映射为品种 key（不改写历史数据），未入库品种回落物种默认
+  const breedKey = P.resolveSpeciesKey(pet.species);
+  const info = P.stageInfo(pet.growthValue, breedKey);
+  const breed = P.speciesOf(breedKey);
+  // 每日投喂上限：今日已喂次数与是否达限（复用 pet.daily[today].feed 口径，与云端 petView 一致）
+  const todayFeedCount = ((pet.daily || {})[today] || {}).feed || 0;
   return {
-    _id: pet._id, childId: pet.childId, species: pet.species, name: pet.name,
+    _id: pet._id, childId: pet.childId, species: breedKey,
+    breedName: breed ? breed.name : '', name: pet.name,
     growthValue: info.growthValue, growthPct: info.growthPct,
     // 成长瓶：按「到下一阶段」的阶段内进度填充（每投喂一次液面可见上升）；满级为满瓶
     stageHave: info.stageHave, stageNeed: info.stageNeed, stagePct: info.stagePct,
@@ -681,6 +688,7 @@ function petView(pet, today) {
     emoji: info.emoji, speciesEmoji: info.speciesEmoji, nextStageAt: info.nextStageAt,
     mood: P.applyMoodDecay(pet.mood, pet.lastMoodAt, Date.now()), moodMax: P.MOOD_MAX,
     feedCount: Number(pet.feedCount) || 0, strokeCount: Number(pet.strokeCount) || 0,
+    todayFeedCount, feedLimited: todayFeedCount >= P.PET_FEED_DAILY_LIMIT,
     adoptedAt: pet.createdAt || 0,
     stats: P.computePetStats(pet, today)
   };
@@ -703,9 +711,11 @@ async function petCRUD({ op, childId, parentToken, payload }) {
   if (op === 'adopt') {
     if (!verifyLocalToken(parentToken)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
     if (findPet(childId)) return fail('ALREADY_HAS_PET', '该宝宝已经有一只宠物啦');
-    const species = String(p.species || 'cat');
-    if (!P.isValidSpecies(species)) return fail('INVALID', '不支持的宠物种类');
-    // 名称：不传 → 用物种默认名；传了就必须非空且 ≤8 字
+    // 品种即花色（2026-09 升级）：入参为物种组（'cat'|'dog'），品种在物种内随机 5 选 1 后入库
+    const group = String(p.species || 'cat');
+    if (!P.isValidSpeciesGroup(group)) return fail('INVALID', '不支持的宠物种类');
+    const species = P.randomBreedKey(group);
+    // 名称：不传 → 用品种默认名；传了就必须非空且 ≤8 字
     let name;
     if (p.name == null) {
       name = P.normalizePetName('', species);
@@ -733,6 +743,11 @@ async function petCRUD({ op, childId, parentToken, payload }) {
     const pets = allPets();
     const pet = pets.find(x => x.childId === childId && !x.released);
     if (!pet) return fail('PET_NOT_FOUND', '还没有宠物');
+    // 每日投喂上限：当日有效投喂达 PET_FEED_DAILY_LIMIT 次即拒绝（不扣星、不加成长值）
+    const todayFeedCount = ((pet.daily || {})[today] || {}).feed || 0;
+    if (todayFeedCount >= P.PET_FEED_DAILY_LIMIT) {
+      return fail('FEED_LIMIT', '今天吃饱啦，明天再喂吧');
+    }
     if ((child.totalStars || 0) < P.PET_FEED_COST) return fail('INSUFFICIENT', '星星不够啦');
     const now = Date.now();
     child.totalStars = (child.totalStars || 0) - P.PET_FEED_COST;

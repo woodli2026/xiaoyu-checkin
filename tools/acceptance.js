@@ -232,7 +232,7 @@ function todayStr() { return D.ymd(new Date()); }
       op: 'adopt', childId, parentToken: token, payload: { species: 'cat', name: '小灰' }
     });
     assert.strictEqual(ad.ok, true, '领养失败');
-    assert.strictEqual(ad.pet.stage, 1, '初始应为蛋蛋');
+    assert.strictEqual(ad.pet.stage, 1, '初始应为幼崽');
     assert.strictEqual(ad.pet.mood, P.MOOD_INIT, '初始心情应为 ' + P.MOOD_INIT);
 
     // 投喂：扣星星 + 加成长 + 加心情 + 一条 pet_feed 流水
@@ -269,7 +269,7 @@ function todayStr() { return D.ymd(new Date()); }
   manual('5-UI', '日历点亮的外观（圆圈高亮 + ✓）',
     '需人工：数据层已确认 monthLit 正确，需肉眼确认渲染效果');
   manual('UI-全量', '三页视觉与弹层交互（新建/编辑/打卡/兑换/图标选择/日明细）',
-    '需人工：按 design-小雨记-UI.html 基线核对；弹层可点蒙层与右上角 × 关闭');
+    '需人工：按 design-雨宝记-UI.html 基线核对；弹层可点蒙层与右上角 × 关闭');
   manual('云', '云端真库链路（云开发 + 13 个云函数）',
     '阻塞：CLOUD_ENV 为空，当前跑本地兜底。需建集合/索引/上传云函数后复测');
 
@@ -280,7 +280,7 @@ function todayStr() { return D.ymd(new Date()); }
     return str + ' '.repeat(Math.max(0, n - len));
   };
   console.log('');
-  console.log('════════ 小雨记 MVP 验收报告 ════════');
+  console.log('════════ 雨宝记 MVP 验收报告 ════════');
   console.log('范围：本地兜底数据层（可断言部分）；标 MANUAL 的需人工确认');
   console.log('');
   for (const r of results) {

@@ -112,18 +112,13 @@ Page({
   },
   // 双入口触发：新基础库经按钮 open-type 授权后由 bindagreeprivacyauthorization 回调；
   // 旧基础库不识别 open-type，走 bindtap。处理幂等，重复触发无副作用。
+  // （授权弹层本体在公共组件 privacy-sheet 内：本地标记 / resolvePrivacy 均已组件化）
   agreePrivacy() {
-    try { wx.setStorageSync(PRIVACY_KEY, true); } catch (e) {}
     this.setData({ showPrivacy: false });
     this.restTip();
   },
-  openPrivacyContract() {
-    if (typeof wx.openPrivacyContract === 'function') {
-      wx.openPrivacyContract({ fail: () => wx.showToast({ title: '暂时无法打开指引', icon: 'none' }) });
-    } else {
-      wx.showToast({ title: '当前微信版本暂不支持查看', icon: 'none' });
-    }
-  },
+  // app.js onNeedPrivacyAuthorization 竞态兜底：微信异步要求授权时由栈顶页弹组件
+  onPrivacyNeed() { this.setData({ showPrivacy: true }); },
   restTip() {
     const today = D.ymd(new Date());
     try {

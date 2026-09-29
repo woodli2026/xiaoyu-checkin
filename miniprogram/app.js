@@ -13,6 +13,7 @@ App({
     parentTokenExpire: 0,
     _hiddenAt: 0,          // 最近一次 onHide 时刻；用于区分「真·离场」与「调用系统相机/相册」
     useCloud: false,       // 是否启用云端（填了 CLOUD_ENV 且 init 成功才 true）
+    privacyResolve: null,  // wx.onNeedPrivacyAuthorization 挂起的 resolve（隐私弹层同意后放行）
     version: APP_VERSION
   },
 
@@ -33,6 +34,7 @@ App({
       console.info('[xiaoyu] 未配置 CLOUD_ENV，使用本地兜底数据层（可在开发者工具/真机预览直接跑通）');
     }
     setUseCloud(this.globalData.useCloud);
+    this.registerPrivacy();
     this.loginPromise = this.login();
     // 每 10s 巡检一次空闲计时：家长模式下连续 15 分钟无交互则自动回到展示模式（R10）
     this._idleTimer = setInterval(() => this.tickIdle(), 10 * 1000);
@@ -122,6 +124,39 @@ App({
         p.setData({ mode: this.globalData.mode });
       }
     });
+  },
+
+  // ============ 隐私授权（官方 onNeedPrivacyAuthorization 机制，基础库 2.32.3+）============
+  //
+  // 时序：隐私 API（chooseMedia 相册等）在用户未同意《用户隐私保护指引》时被微信挂起并
+  // 回调 onNeedPrivacyAuthorization → 我们存下 resolve 并通知栈顶页面弹 privacy-sheet；
+  // 用户点「同意并继续」→ 组件 agreePrivacy → resolvePrivacy() 调 resolve({event:'agree'})
+  // → 被挂起的那次 API 原地继续，全程不离开当前页。
+  // 各页预检（home onShow / mine 选图前 getPrivacySetting）负责主动弹窗的常规路径，
+  // 这里是微信异步触发的竞态兜底（预检通过但 API 调用时微信又要求授权）。
+  registerPrivacy() {
+    if (typeof wx.onNeedPrivacyAuthorization !== 'function') return;
+    wx.onNeedPrivacyAuthorization((resolve) => {
+      this.globalData.privacyResolve = resolve;
+      this.emitPrivacyNeed();
+    });
+  },
+
+  // 通知栈顶页面弹隐私授权弹层（页面实现 onPrivacyNeed 方法即可接入）
+  emitPrivacyNeed() {
+    const pages = (typeof getCurrentPages === 'function') ? getCurrentPages() : [];
+    const top = pages[pages.length - 1];
+    if (top && typeof top.onPrivacyNeed === 'function') top.onPrivacyNeed();
+  },
+
+  // 放行被挂起的隐私 API（由 privacy-sheet 组件在用户同意后调用）。
+  // buttonId 对应弹层中 open-type="agreePrivacyAuthorization" 按钮的 id（微信校验用）。
+  // 无挂起调用时（页面预检路径）no-op，返回 false。
+  resolvePrivacy(buttonId) {
+    const r = this.globalData.privacyResolve;
+    this.globalData.privacyResolve = null;
+    if (typeof r === 'function') r({ event: 'agree', buttonId: buttonId || '' });
+    return !!r;
   },
 
   clearParent() {

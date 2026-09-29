@@ -52,7 +52,7 @@
   margin-top: 19rpx;
   display: flex; align-items: flex-end; justify-content: space-between;
 }
-.flask { width: 116rpx; display: flex; flex-direction: column; align-items: center; }
+.flask { position: relative; width: 116rpx; display: flex; flex-direction: column; align-items: center; }
 /* 无瓶盖：成长瓶＝玻璃心，心情瓶＝玻璃钻石（用户 2026-09-19 定稿） */
 .flask .body {
   position: relative; width: 104rpx; height: 112rpx; overflow: hidden;
@@ -144,65 +144,23 @@
 .flask .flab { margin-top: 8rpx; font-size: 21rpx; font-weight: 700; color: #4b5a72; /* 豁免：与原型 v2.4 一致 —— 瓶标深灰蓝 */ }
 
 /* 宠物本体 */
-/* 豁免：与原型 v2.4 一致 —— 本区块硬编码色（腮红珊瑚 rgba、破壳提示橙 #e8762f、传奇横幅白字）均为定稿色 */
+/* 豁免：与原型 v2.4 一致 —— 本区块硬编码色（成长提示橙 #e8762f）为定稿色 */
 .pet-stage { height: 365rpx; display: flex; align-items: center; justify-content: center; position: relative; }
 .pet-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
 .pet { font-size: 185rpx; line-height: 1; filter: drop-shadow(0 23rpx 35rpx rgba(120, 110, 160, .25)); transition: transform .3s; }
-.pet.egg { font-size: 162rpx; }
+/* 品种形态图（2026-09 两档制）：幼崽/成年两态 PNG，共用一个 300rpx 容器盒子 */
+.pet-img { width: 300rpx; height: 300rpx; z-index: 2; }
+/* 阶段尺寸层（两档制）：幼崽 scale(1)、成年 scale(1.15)（成年图显大一点，配饰已全部废弃）。
+   scale 落在外层 .pet-scale 包裹视图上（transform 不改变布局占位）；本体 .pet 上的常驻动画
+   与互动动画（.pet-stroking/.pet-eating）仍作用于 image 自身的 transform —— 两层分离，互不覆盖。 */
+.pet-scale { position: relative; display: flex; align-items: center; justify-content: center; }
+.pet-scale.s2 { transform: scale(1.15); }
+/* 常驻待机动画：幼崽轻晃（活泼）/ 成年摇摆（稳重） */
 .pet.s1 { animation: wob 2.2s ease-in-out infinite; }
-.pet.s2 { font-size: 142rpx; animation: hop 1.4s ease-in-out infinite; }
-.pet.s3 { animation: sway 2.6s ease-in-out infinite; }
-.pet.s4 { animation: sway 2.6s ease-in-out infinite; }
-.pet.s5 { animation: spinGlow 4s linear infinite; }
+.pet.s2 { animation: sway 2.6s ease-in-out infinite; }
 @keyframes wob { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
-@keyframes hop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-35rpx); } }
 @keyframes sway { 0%,100% { transform: translateX(-15rpx) rotate(-3deg); } 50% { transform: translateX(15rpx) rotate(3deg); } }
-@keyframes spinGlow { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.08); } 100% { transform: rotate(360deg) scale(1); } }
-/* 配饰 */
-.pet-halo { position: absolute; top: -27rpx; font-size: 50rpx; animation: tw 2.4s ease-in-out infinite; }
-.pet-crown { position: absolute; top: -58rpx; font-size: 65rpx; animation: bob 2s ease-in-out infinite; }
-.pet-scarf { position: absolute; bottom: 35rpx; font-size: 58rpx; }
-.pet-medal { position: absolute; top: -8rpx; right: -23rpx; font-size: 42rpx; animation: tw 2.4s ease-in-out infinite; }
-/* 破壳（s2）：壳贴在宠物下半部脚边 —— 原先悬在头顶与未领养「蛋蛋」符号冲突（P2 打磨定稿） */
-.pet-shell { position: absolute; bottom: -4rpx; font-size: 50rpx; }
-.pet-cheek { position: absolute; bottom: 50rpx; width: 29rpx; height: 19rpx; border-radius: 50%; background: rgba(255, 138, 148, .5); }
-.pet-cheek.l { left: 15%; }
-.pet-cheek.r { right: 15%; }
-/* 传奇翅膀（s5）：纯 CSS 渐变羽翼（P1 打磨定稿：原翅膀 emoji 属非基础区段 Unicode，跨机型不一致已移除）
-   豁免：金色渐变端点 #c79a2e / rgba 金辉光 —— 与原型 v2.4 金色系一致（同 .topcard .unit 的 #c79a2e） */
-.pet-wing {
-  position: absolute; top: 44rpx; width: 64rpx; height: 96rpx;
-  pointer-events: none;
-  background: linear-gradient(155deg, var(--sun) 0%, var(--star) 55%, #c79a2e 100%);
-  border-radius: 100% 16% 74% 16% / 62% 22% 88% 30%;
-  box-shadow: inset 0 -10rpx 14rpx rgba(199, 154, 46, .4);
-  filter: drop-shadow(0 0 12rpx rgba(255, 201, 60, .65));
-  animation: flutter 1.8s ease-in-out infinite;
-}
-/* 内层羽片 ×2：叠出羽毛层次（豁免：白色高光/浅金 rgba，与原型 v2.4 玻璃高光同源） */
-.pet-wing::before {
-  content: ''; position: absolute; left: 16%; top: 16%; width: 56%; height: 50%;
-  background: linear-gradient(155deg, rgba(255, 255, 255, .85), rgba(255, 230, 160, .5));
-  border-radius: 100% 16% 74% 16% / 62% 22% 88% 30%;
-}
-.pet-wing::after {
-  content: ''; position: absolute; left: 6%; bottom: 6%; width: 64%; height: 40%;
-  background: linear-gradient(155deg, rgba(255, 230, 160, .9), rgba(199, 154, 46, .55));
-  border-radius: 100% 16% 74% 16% / 62% 22% 88% 30%;
-}
-/* 左翅镜像：animation 会整体覆盖 transform，故镜像写进专属 keyframes（flutter-l），不能只靠 scaleX(-1) */
-.pet-wing.l { left: -46rpx; animation-name: flutter-l; }
-.pet-wing.r { right: -46rpx; }
-@keyframes flutter { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-12rpx) rotate(4deg); } }
-@keyframes flutter-l { 0%,100% { transform: scaleX(-1) translateY(0) rotate(-4deg); } 50% { transform: scaleX(-1) translateY(-12rpx) rotate(4deg); } }
-@keyframes tw { 0%,100% { transform: scale(.8) rotate(-6deg); opacity: .5; } 50% { transform: scale(1.15) rotate(6deg); opacity: 1; } }
 .pet-tip { margin-top: 12rpx; font-size: 23rpx; color: #e8762f; }
-.pet-banner {
-  display: inline-block; margin-top: 15rpx;
-  background: linear-gradient(135deg, var(--star), var(--coral));
-  color: #fff; font-weight: 800; font-size: 25rpx;
-  padding: 8rpx 27rpx; border-radius: 999rpx; box-shadow: var(--shadow-sm);
-}
 
 /* 技能按钮（王者荣耀风格）—— 位于成长瓶与心情瓶之间，底部对齐 */
 /* 豁免：与原型 v2.4 一致 —— 本区块硬编码色（白圈边框、银白径向渐变、立体阴影、费用橙 #e8762f）均为定稿色 */
@@ -226,7 +184,6 @@
 /* 框外操作 */
 /* 豁免：与原型 v2.4 一致 —— 管理入口玫瑰灰 #b08a9a */
 .acts { margin-top: 31rpx; }
-.adopt-btn { width: 100%; font-size: 35rpx; border-radius: 35rpx; padding: 29rpx; }
 .manage-row { display: flex; justify-content: center; }
 .manage-btn {
   color: #b08a9a; font-size: 25rpx; font-weight: 700;
@@ -235,15 +192,21 @@
 .manage-hint { text-align: center; font-size: 25rpx; color: var(--ink-soft); }
 .btn-lav { background: linear-gradient(135deg, var(--lav), var(--peach)); }
 
-/* 弹层内部 */
+/* 未领养态：主区页内领养选择卡（2026-09 定稿：旧「🥚 + 框外按钮 + 领养弹层」流程下线）
+   复用原弹层 .pet-grid/.pg 卡片样式改为页内横排 */
 /* 豁免：与原型 v2.4 一致 —— 物种格子浅紫底 #f6f4fb */
-.pet-grid { display: flex; flex-wrap: wrap; gap: 19rpx; margin: 12rpx 0 8rpx; }
+.adopt-card { padding: 26rpx 0 6rpx; }
+.adopt-card .adopt-title { font-size: 31rpx; font-weight: 800; color: var(--ink); margin-bottom: 6rpx; }
+.pet-grid { display: flex; justify-content: center; gap: 31rpx; margin: 12rpx 0 8rpx; }
 .pet-grid .pg {
-  width: 120rpx; height: 120rpx; border-radius: 31rpx;
+  width: 176rpx; height: 176rpx; border-radius: 35rpx;
   border: 4rpx solid var(--line); background: #f6f4fb;
-  font-size: 65rpx; display: flex; align-items: center; justify-content: center;
+  font-size: 84rpx; display: flex; align-items: center; justify-content: center;
+  transition: transform .15s;
 }
-.pet-grid .pg.on { background: var(--sun); border-color: var(--coral); box-shadow: var(--shadow-sm); }
+.pet-grid .pg:active { transform: scale(.94); }
+/* 领养选择卡随机品种说明（品种即花色定稿口径） */
+.adopt-breed-hint { font-size: 21rpx; color: var(--ink-soft); margin: 4rpx 0 10rpx; }
 .fl-label { display: block; font-size: 25rpx; color: var(--ink-soft); margin-bottom: 10rpx; font-weight: 700; }
 .mg-tip { margin-top: 0; text-align: left; }
 
@@ -276,3 +239,140 @@
   box-shadow: var(--shadow-sm);
 }
 .pet-edit:active { transform: scale(.88); }
+
+/* ===== 互动动画（2026-09 定稿，纯表现层）=====
+   抚摸：宠物「享受歪头」大幅摇摆 + CSS 自绘卡通小手头顶往复轻抚 + 爱心上浮；
+   投喂：本体切 _eat 差分图（食盆已画进图）+ 前倾点头（埋头吃）+ 金星上浮。
+   【重播机制】动画元素一律 A/B 两套 keyframes（内容相同、名字不同），由 animPhase 交替挂
+   .a/.b 类 —— animation-name 变化即强制重启，无节点重建/双 setData 时序依赖；
+   互动期间用 !important 显式关停待机动画（wob/sway），结束自动恢复。
+   豁免：糖果肤色 #ffd9b8 / 爱心粉珊瑚 #ff8fa8 / 星星金 #ffd257 / 手掌阴影 rgba(0,0,0,.06)
+   —— 互动动效新增色，与原型 v2.4 的珊瑚/金色系（--coral / --star）同源，非配色漂移。
+   性能口径：粒子 ≤3 个；动画只动 transform/opacity；box-shadow 仅静态塑形（手指），不参与动画。 */
+
+/* 宠物享受动作（抚摸）：明显「歪头享受」——rotate -10°↔8° + 上下 8rpx + 微缩，2 个摆动周期。
+   !important 压过待机 wob/sway（同属性竞争），互动结束类被清即自动恢复待机 */
+.pet-stroking.a .pet { animation: petStrokeShakeA 1.6s ease-in-out !important; }
+.pet-stroking.b .pet { animation: petStrokeShakeB 1.6s ease-in-out !important; }
+@keyframes petStrokeShakeA {
+  0%, 100% { transform: rotate(0) translateY(0) scale(1); }
+  20%, 70% { transform: rotate(-10deg) translateY(-8rpx) scale(.98); }
+  45%, 95% { transform: rotate(8deg) translateY(8rpx) scale(.98); }
+}
+@keyframes petStrokeShakeB {
+  0%, 100% { transform: rotate(0) translateY(0) scale(1); }
+  20%, 70% { transform: rotate(-10deg) translateY(-8rpx) scale(.98); }
+  45%, 95% { transform: rotate(8deg) translateY(8rpx) scale(.98); }
+}
+
+/* 吃食动作（投喂）：埋头点头 rotate 5deg + translateY 8rpx，频率加快（节奏 3 次） */
+.pet-eating.a .pet { animation: petEatNodA 1.8s ease-in-out !important; }
+.pet-eating.b .pet { animation: petEatNodB 1.8s ease-in-out !important; }
+@keyframes petEatNodA {
+  0%, 72%, 100% { transform: rotate(0) translateY(0); }
+  12%, 36%, 60% { transform: rotate(5deg) translateY(8rpx); }
+  24%, 48% { transform: rotate(0) translateY(0); }
+}
+@keyframes petEatNodB {
+  0%, 72%, 100% { transform: rotate(0) translateY(0); }
+  12%, 36%, 60% { transform: rotate(5deg) translateY(8rpx); }
+  24%, 48% { transform: rotate(0) translateY(0); }
+}
+
+/* 卡通小手：圆润糖果肤色掌 + 四指圆弧（::before 静态 box-shadow 复制指节，仅塑形无动画）
+   从头顶上方（top 10% 一线）降入，左右往复轻抚 3 次（±34rpx + rotate ±10deg）+ 轻微下压，
+   1.6s 上浮退出；A/B 两套 keyframes 由 .a/.b 交替挂载 */
+.pet-hand {
+  position: absolute; top: 10%; left: 50%; margin-left: -33rpx; z-index: 6;
+  width: 66rpx; height: 62rpx;
+  background: #ffd9b8;
+  border-radius: 46% 54% 50% 50%;
+  box-shadow: inset -6rpx -8rpx 0 rgba(0, 0, 0, .06);
+  pointer-events: none;
+}
+.pet-hand::before {
+  content: ''; position: absolute; top: -20rpx; left: 4rpx;
+  width: 15rpx; height: 26rpx; border-radius: 9rpx; background: #ffd9b8;
+  /* 四指圆弧：静态 box-shadow 复制三枚指节（同糖果肤色，豁免见区块头） */
+  box-shadow: 17rpx 3rpx 0 0 #ffd9b8, 33rpx 6rpx 0 0 #ffd9b8, 47rpx 11rpx 0 0 #ffd9b8;
+}
+.pet-hand.a { animation: handStrokeA 1.6s ease-in-out both; }
+.pet-hand.b { animation: handStrokeB 1.6s ease-in-out both; }
+@keyframes handStrokeA {
+  0%   { transform: translateY(-130rpx) rotate(-10deg); opacity: 0; }
+  12%  { transform: translateY(0) rotate(0deg); opacity: 1; }
+  28%  { transform: translateX(-34rpx) translateY(4rpx) rotate(-10deg); }
+  44%  { transform: translateX(34rpx) translateY(12rpx) rotate(10deg); }
+  60%  { transform: translateX(-34rpx) translateY(4rpx) rotate(-10deg); }
+  76%  { transform: translateX(34rpx) translateY(12rpx) rotate(10deg); }
+  88%  { transform: translateX(-20rpx) translateY(4rpx) rotate(-6deg); opacity: 1; }
+  100% { transform: translateY(-130rpx) rotate(-10deg); opacity: 0; }
+}
+@keyframes handStrokeB {
+  0%   { transform: translateY(-130rpx) rotate(-10deg); opacity: 0; }
+  12%  { transform: translateY(0) rotate(0deg); opacity: 1; }
+  28%  { transform: translateX(-34rpx) translateY(4rpx) rotate(-10deg); }
+  44%  { transform: translateX(34rpx) translateY(12rpx) rotate(10deg); }
+  60%  { transform: translateX(-34rpx) translateY(4rpx) rotate(-10deg); }
+  76%  { transform: translateX(34rpx) translateY(12rpx) rotate(10deg); }
+  88%  { transform: translateX(-20rpx) translateY(4rpx) rotate(-6deg); opacity: 1; }
+  100% { transform: translateY(-130rpx) rotate(-10deg); opacity: 0; }
+}
+
+/* 投喂：无独立食盆叠加图（_eat 差分图已把食盆画进图里，叠加会重影）——
+   表现 = petSrc 切 _eat 图 + 埋头点头 + 金星粒子；独立食盆叠加的节点与 keyframes 已随 bowl 资产一起移除 */
+
+/* 互动粒子：外层 .anim-fx 只管上浮（transform/opacity），内层 .fx 画形状（静态旋转不互踩）
+   爱心=经典「方块旋转 45° + 双圆」；星星=clip-path 五角星 */
+.anim-fx {
+  position: absolute; z-index: 6; pointer-events: none;
+  animation: fxFloat 1.4s ease-out both;
+}
+@keyframes fxFloat {
+  0%   { transform: translateY(0) scale(.5); opacity: 0; }
+  18%  { opacity: .95; }
+  100% { transform: translateY(-96rpx) scale(1.1); opacity: 0; }
+}
+.fx { display: block; }
+.fx-heart {
+  position: relative; width: 24rpx; height: 24rpx; background: #ff8fa8;
+  transform: rotate(-45deg);
+}
+.fx-heart::before, .fx-heart::after {
+  content: ''; position: absolute; width: 24rpx; height: 24rpx;
+  border-radius: 50%; background: #ff8fa8;
+}
+.fx-heart::before { top: -12rpx; left: 0; }
+.fx-heart::after { top: 0; left: 12rpx; }
+.fx-star {
+  width: 30rpx; height: 30rpx; background: #ffd257;
+  -webkit-clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+/* ===== HUD 互动浮动数值（2026-09 定稿）=====
+   投喂/抚摸成功 → 瓶上方「+N 经验 / +N 心情」上浮淡出（无背景），替代原 toast。
+   色值：经验=暖金 var(--star)、心情=珊瑚粉 var(--coral)——直接复用配色体系变量，零新增色值；
+   白描边 text-shadow 与 .flask .fnum 同做法（白 #fff 为体系既有豁免色）。
+   A/B 成对 keyframes（内容相同、名字不同）由 animPhase 交替挂载，animation-name 变化即强制重播。 */
+.growth-float, .mood-float {
+  position: absolute; top: -46rpx; left: 0; right: 0; z-index: 4;
+  text-align: center; font-size: 27rpx; font-weight: 800;
+  pointer-events: none;
+  text-shadow:
+    -2rpx -2rpx 0 #fff, 2rpx -2rpx 0 #fff, -2rpx 2rpx 0 #fff, 2rpx 2rpx 0 #fff,
+    -2rpx 0 0 #fff, 2rpx 0 0 #fff, 0 -2rpx 0 #fff, 0 2rpx 0 #fff,
+    0 3rpx 6rpx rgba(50, 40, 70, .35);
+}
+.growth-float { color: var(--star); }
+.mood-float { color: var(--coral); }
+.growth-float.a, .mood-float.a { animation: floatUpA 1.4s ease-out both; }
+.growth-float.b, .mood-float.b { animation: floatUpB 1.4s ease-out both; }
+@keyframes floatUpA {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-56rpx); opacity: 0; }
+}
+@keyframes floatUpB {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-56rpx); opacity: 0; }
+}

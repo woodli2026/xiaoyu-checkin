@@ -26,8 +26,8 @@ const SHEET_KEYS = [
   'showDetail',
   // pages/mine
   'showSetPin', 'showHelp', 'showAbout', 'showEditChild', 'showBabyList',
-  // pages/pet
-  'showAdopt', 'showRename', 'showStats', 'showManage'
+  // pages/pet（showAdopt 已下线：领养改为主区选择卡 + showName 起名弹层两步）
+  'showName', 'showRename', 'showStats', 'showManage'
 ];
 
 function getTabBar(page) {

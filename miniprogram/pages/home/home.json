@@ -1,7 +1,8 @@
 {
   "usingComponents": {
     "pin-pad": "/components/pin-pad/pin-pad",
-    "day-sheet": "/components/day-sheet/day-sheet"
+    "day-sheet": "/components/day-sheet/day-sheet",
+    "privacy-sheet": "/components/privacy-sheet/privacy-sheet"
   },
-  "navigationBarTitleText": "小雨记"
+  "navigationBarTitleText": "雨宝记"
 }

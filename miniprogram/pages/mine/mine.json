@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "pin-pad": "/components/pin-pad/pin-pad"
+    "pin-pad": "/components/pin-pad/pin-pad",
+    "privacy-sheet": "/components/privacy-sheet/privacy-sheet"
   },
   "navigationBarTitleText": "我"
 }

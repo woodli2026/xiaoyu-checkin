@@ -1,8 +1,8 @@
-# 小雨记 · 宠物 + 打卡积分统计 设计文档（第二阶段 / 非 MVP）
+# 雨宝记 · 宠物 + 打卡积分统计 设计文档（第二阶段 / 非 MVP）
 
 > 文档版本：v0.1
 > 编写日期：2026-09-18
-> 依据：PRD §6（第二阶段）、2026-09-18 grill 收口决策、`PLAN-小雨记-详细计划.md` / `PLAN-小雨记-MVP实施计划.md` 工程约定
+> 依据：PRD §6（第二阶段）、2026-09-18 grill 收口决策、`PLAN-雨宝记-详细计划.md` / `PLAN-雨宝记-MVP实施计划.md` 工程约定
 > 定位：本模块实现基线。MVP 已完成核心闭环 + 动态 + R10，本模块在其上叠加；不进入 MVP 验收（§4）。
 > 落地节奏：**v1.0 仅本地层（wx.storage）跑通**，云函数 `petCRUD` / `pointsStats` 顺延 v1.1（同既有 B1–B5 模式）。
 
@@ -36,7 +36,7 @@
 | 底部导航 | 自定义 tabBar；新增 tab 须同步 4 处（app.json pages+tabBar.list、custom-tab-bar list、各页 onShow selected）。 | MEMORY 规则 7/12 |
 | 弹层 | 全屏弹层须隐藏 tabBar；`.mask bindtap` 关闭、`.sheet catchtap noop`；`input` 显式 `height:88rpx`。 | MEMORY 规则 8/11 |
 | 受控刷新 | 动画切换用递增计数触发，不用「值是否变化」observer。 | MEMORY 规则 11 |
-| 视觉基线 | `design-小雨记-UI.html` 糖果调色板（天蓝/薄荷/蜜桃/暖阳/星星金/珊瑚/薰衣草），CSS 变量驱动。 | PRD §1.5 决议 5 |
+| 视觉基线 | `design-雨宝记-UI.html` 糖果调色板（天蓝/薄荷/蜜桃/暖阳/星星金/珊瑚/薰衣草），CSS 变量驱动。 | PRD §1.5 决议 5 |
 | 模式 | R10：启动即家长模式 + 15 分钟空闲回展示模式；危险操作须家长令牌。 | PRD §5 |
 
 ---

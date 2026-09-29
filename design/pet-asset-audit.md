@@ -2,7 +2,7 @@
 
 - 审计人：林绘澄（art-director）· 评审强度：solo
 - 范围：`miniprogram/pages/pet/pet.wxml` / `pet.wxss`、`miniprogram/images/tabbar/pet-off|on.svg`，关联基线 `app.wxss`（糖果调色板变量）、`README-小程序.md` §11.17/§12、`utils/pets.js`
-- 视觉基线：`design-小雨记-UI.html` 糖果调色板（CSS 变量驱动，配色禁止擅改）+ `design-宠物tab-原型.html` v2.4
+- 视觉基线：`design-雨宝记-UI.html` 糖果调色板（CSS 变量驱动，配色禁止擅改）+ `design-宠物tab-原型.html` v2.4
 - 结论口径：✔ 符合 / ⚠ 偏差 / ✘ 缺失。只列问题与建议，不改代码。
 
 ## 一、规格符合度核对

@@ -25,6 +25,7 @@ Page({
     editName: '', editAvatar: '🧒', editPhoto: '',
     editGender: '', editBirthday: '', editAllergens: '', editErr: '',
     showHelp: false, showAbout: false,
+    showPrivacy: false,   // 隐私授权弹层（components/privacy-sheet，选图就地授权用）
     startInParent: true   // 设置项：启动即家长模式（R10，默认开）
   },
 
@@ -291,7 +292,63 @@ Page({
 
   // 从手机相册/相机选择自定义头像照片。
   // 本地模式：saveFile 持久化到用户文件目录（temp 路径重启即失效）；云端模式：上传到云存储拿 fileID。
+  //
+  // 隐私授权就地完成（2026-09，重写）：
+  //   主路径用官方 wx.requirePrivacyAuthorize 作为「授权闸门」。它会在用户尚未同意时触发
+  //   app.js 的 onNeedPrivacyAuthorization → 弹 privacy-sheet；用户点「同意并继续」后，
+  //   微信在「同意真正落库」之后才回调 success，此时再继续打开相册——彻底规避
+  //   「刚点同意→立即 chooseMedia 却被微信判定未同意」的同意落库竞态（此前反复失败的根因）。
+  //   已同意过（needAuthorization=false）则 success 立即触发，不再弹卡片（仅首次弹）。
+  //   回退路径：旧基础库无 requirePrivacyAuthorize 时，用 getPrivacySetting 预检 + 就地弹卡片。
   chooseChildPhoto() {
+    const proceed = () => this.doChooseChildPhoto();
+    // 主路径：官方授权闸门（基础库 2.32.3+），消除同意落库竞态
+    if (typeof wx.requirePrivacyAuthorize === 'function') {
+      wx.requirePrivacyAuthorize({
+        success: proceed,   // 已同意 / 或刚在卡片里同意后放行
+        fail: () => {
+          // 用户在卡片里点了「拒绝」：不打开相册，给出提示即可
+          wx.showToast({ title: '需先授权才能选择照片', icon: 'none' });
+        }
+      });
+      return;
+    }
+    // 回退路径：getPrivacySetting 预检，需授权则当场弹组件、同意后原地继续
+    if (typeof wx.getPrivacySetting === 'function') {
+      wx.getPrivacySetting({
+        success: (res) => {
+          // 指引未配置：MP 后台没填《用户隐私保护指引》时 privacyContractName 为空，
+          // 显式提示后台配置缺失，避免误导用户「去同意」
+          if (!res.privacyContractName) {
+            wx.showToast({ title: '小程序后台未配置隐私指引，暂无法选照片', icon: 'none', duration: 3000 });
+            return;
+          }
+          if (res.needAuthorization) this.showPrivacySheet(() => this.doChooseChildPhoto());
+          else this.doChooseChildPhoto();
+        },
+        fail: () => this.doChooseChildPhoto()
+      });
+    } else {
+      this.doChooseChildPhoto();   // 旧基础库无隐私接口，直接选图
+    }
+  },
+
+  // 弹隐私授权弹层（可选挂一个「同意后继续」的回调，如继续打开相册）
+  showPrivacySheet(onAgreed) {
+    this._privacyCb = onAgreed || null;
+    this.setData({ showPrivacy: true });
+  },
+  // 组件 agreed 回调：关弹层并继续被暂停的业务（无挂起回调则仅关闭）
+  onPrivacyAgreed() {
+    this.setData({ showPrivacy: false });
+    const cb = this._privacyCb;
+    this._privacyCb = null;
+    if (typeof cb === 'function') cb();
+  },
+  // app.js onNeedPrivacyAuthorization 竞态兜底：微信异步要求授权时由栈顶页弹组件
+  onPrivacyNeed() { this.showPrivacySheet(null); },
+
+  doChooseChildPhoto() {
     const app = getApp();
     wx.chooseMedia({
       count: 1,
@@ -312,14 +369,28 @@ Page({
           this.setData({ editPhoto: finalPath });
           wx.showToast({ title: '已选照片', icon: 'success' });
         } catch (e) {
-          wx.showToast({ title: '处理失败', icon: 'none' });
+          console.error('[childPhoto] 处理失败:', e && (e.errMsg || e.message) || e);
+          const detail = String((e && (e.errMsg || e.message)) || '').slice(0, 40);
+          wx.showToast({ title: detail ? '处理失败: ' + detail : '处理失败', icon: 'none' });
         } finally {
           wx.hideLoading();
         }
       },
       fail: (err) => {
         if (err && err.errMsg && err.errMsg.indexOf('cancel') >= 0) return;
-        wx.showToast({ title: '选择照片失败', icon: 'none' });
+        console.error('[childPhoto] chooseMedia fail:', err && err.errMsg);
+        const msg = String((err && err.errMsg) || '');
+        // 已授权却仍被拦截：绝大多数是 MP 后台《隐私保护指引》未勾选「选中的照片或视频信息」
+        // 这一接口类型——指引审批通过 ≠ 该接口被授权。给出可操作的排查指引。
+        if (msg.indexOf('privacy') >= 0 || msg.indexOf('隐私') >= 0 || msg.indexOf('同意') >= 0) {
+          wx.showModal({
+            title: '仍无法选择照片',
+            content: '已授权但相册接口仍被拦截。请到「微信公众平台 → 设置 → 用户隐私保护指引」确认指引中已勾选接口类型「选中的照片或视频信息」并重新提交审核；同时在本机微信「我 → 设置 → 个人信息与权限 → 授权管理」中确认已同意雨宝记的隐私指引。',
+            showCancel: false
+          });
+          return;
+        }
+        wx.showToast({ title: '选择照片失败: ' + msg.slice(0, 40), icon: 'none', duration: 2500 });
       }
     });
   },
