@@ -1,0 +1,308 @@
+# CONTEXT.md —— 雨宝记 项目术语与上下文
+
+> 目标读者：后续接手/改进本项目代码架构的人（含 AI Agent）。
+> 作用：以「术语表 + 架构不变量 + 约束清单 + 已知债务」的形态，把**代码里没写清楚、但决定了怎么改才对**的信息集中在一处。
+> 权威来源优先级：**代码 > 本文件 > docs/ 下的历史文档**。若本文件与代码冲突，以代码为准并顺手修正本文件。
+>
+> 最后校对：2026-10-08（对照 commit 工作区实况）。
+
+---
+
+## 0. 快速定位
+
+| 问题 | 看哪里 |
+|---|---|
+| 某个操作的数据从哪来 | `miniprogram/utils/api.js` → 云端 `cloudfunctions/<name>/index.js` 或本地 `miniprogram/services/local.js` |
+| 业务规则（连续天数/星级/可见性/兑换） | `miniprogram/utils/domain.js`、`tasks.js`、`pets.js` ↔ `cloudfunctions/lib/*`（双份，勿只改一份） |
+| 数据字段口径 | 本文件 §5 数据模型 |
+| 页面 UI 约束（为什么元素看得见却点不到） | `miniprogram/app.wxss` 顶部注释 + §7 隐式前提 |
+| 改完怎么验 | `npm test` / `npm run check` / §9 命令 |
+
+---
+
+## 1. 项目速览
+
+- **是什么**：微信原生小程序 + 微信云开发，面向家庭的儿童习惯养成工具（打卡 → 星星 → 兑换奖励 + 虚拟宠物陪伴）。
+- **命名**：「雨宝记」为对外名（2026-09 由「小雨记」更名）。代码里历史标识符 `xiaoyu` / `xy_` 前缀**保持不变**，属刻意保留，不要批量改名。
+- **版本**：`1.0.0`（`miniprogram/config.js` 的 `APP_VERSION`，显示在「关于」页）。
+- **当前运行档位**：`CLOUD_ENV = ''` → **本地兜底层**（wx.storage）。云端云函数已写完但**尚未部署**（顺延 V1.1）。
+- **技术约束**：无构建工具、无 TypeScript、无 ESLint。仅 `npm run check` 做**语法解析级**校验。类型安全完全靠约定 + 测试。
+- **规模**：前端 22 个 js + 11 wxml + 11 wxss；云函数 13 个，每个自带 12 份 lib 副本（`lib/` 源 12 个文件 → 156 个副本 → cloudfunctions 下共 182 个 js）。
+
+---
+
+## 2. 目录职责地图
+
+```
+miniprogram/            小程序前端
+  app.js                全局基座：云初始化 / 静默登录 / 双模式态 / 家长令牌生命周期 / 隐私授权兜底
+  config.js             唯一部署开关（CLOUD_ENV）+ 版本号 + 空闲阈值
+  app.json              页面注册、自定义 tabBar、__usePrivacyCheck__
+  app.wxss              全局样式 + 糖果调色板 CSS 变量（视觉唯一口径）
+  services/local.js     本地兜底数据层（842 行，14 个数据操作，云端 13 个 + 演示用 resetAll）
+  utils/
+    api.js              统一数据入口 callApi(name, params) —— 云端/本地自动路由 + 错误抛出
+    domain.js           纯逻辑：日期/连续天数/星级/令牌/打卡核/兑换核/空闲判定
+    tasks.js            纯逻辑：任务可见性/优先级/分组/标签字典
+    pets.js             纯逻辑：宠物物种/阶段/命名/心情衰减/互动统计
+    feed.js             纯展示：动态列表时间/分组文案
+    seed.js             开箱预置数据（3 任务 + 2 奖励），云端 lib/seed.js 的镜像
+    storage.js          本地存储键名表 KEYS + read/write/remove/nextId
+    tabbar.js           自定义 tabBar 显隐「派生」控制器
+    icons.js            emoji 图标候选集（任务/奖励各 6 类 × 24）
+  components/           公共组件：day-sheet / emoji-picker / pin-pad / privacy-sheet
+  custom-tab-bar/       自定义底部导航（原生 tabBar 字号不可调，故自定义）
+
+cloudfunctions/         云函数（部署单元）
+  lib/                  共享纯逻辑（唯一手写来源）+ cloud.js（含 wx-server-sdk 的助手）
+  setup.js              生成各函数 package.json 并把 lib 复制进每个函数目录
+  <name>/index.js       各云函数入口（自包含：自带 lib/ 副本）
+  <name>/lib/           ⚠️ 构建产物，由 setup.js 生成，勿手改
+
+__tests__/              6 个测试文件（node:test，无第三方依赖）
+tools/                  acceptance.js（接口验收）/ ui-acceptance.js（WXML 结构验收）/ check-syntax.js
+docs/                   需求·设计·方案·计划·隐私·发布（PRD / PLAN / ACCEPTANCE / release-checklist 等）
+```
+
+---
+
+## 3. 术语表
+
+### 3.1 领域术语
+
+| 术语 | 定义 | 代码位置 |
+|---|---|---|
+| **宝宝 / child** | 被管理的孩子档案，数据以 `childId` 隔离。多宝宝上限 **6**，软删（`deleted:true`），至少保留 1 个 | `children` 集合 / `xy_children` |
+| **星星 / star** | **统一货币**（积分与星星同一概念，不设第二种货币）。打卡加分、兑换扣分、投喂扣分 | `child.totalStars`、`pointsLog` |
+| **打卡 / checkIn** | 某孩子在某日完成某任务，产生一条流水并加星。同一 `(childId, taskId, date)` 唯一 | `checkIns` |
+| **补打卡 / backfill** | 对**历史日期**打卡（日历点过去日期）。会破坏增量计数器 → 连续天数一律由流水重推 | `feed.js#isBackfill`、`domain.js#displayStreak` |
+| **连续天数 / streak** | 展示口径：今天有打卡则从今天往前数，今天没打则从昨天往前数（**不因今天没打而归零**） | `domain.js#displayStreak` ↔ `lib/streak.js` |
+| **星级 / level** | 由 streak 派生的 1–5 星：≥25→5，≥18→4，≥10→3，≥4→2，否则 1 | `domain.js#levelOf` ↔ `lib/level.js` |
+| **可见性 / visible** | 某任务在某日是否需要打卡。未设重复 → 生效后**每天**可见（不是仅生效当天） | `tasks.js#taskVisibleOn` ↔ `lib/visibility.js` |
+| **对号 / dayAllDone** | 日历某日右上角勾：「当日**所有可见任务**都已完成」才为真；无可见任务 → false | `tasks.js#dayAllDone` |
+| **奖励 / reward** | 用星星兑换的条目。`category` 有 `reward`/`punish`（惩罚）两种文案口径 | `rewards` |
+| **限次 / resetAfterRedeem** | `true`=可反复兑换（只受余额约束）；`false`=每位孩子**仅一次**（靠「是否已兑换过」把关）。**奖励无库存概念** | `domain.js#redeemBlockReason` ↔ `lib/redeemCore.js` |
+| **动态 / feed** | 打卡 + 兑换的聚合流水列表（跨全部宝宝）。**故意不过滤 `deleted`**，历史记录要能显示已删条目名 | `feedCRUD op=list` |
+| **撤销 / undo** | 撤销打卡（扣回星星、重算连续、删记录）或取消兑换（返还星星、恢复限次）。反向流水 `*_undo` 只作审计，**不在动态展示** | `feedCRUD op=undoCheckIn/undoRedeem` |
+| **宠物 / pet** | 每宝宝**同时最多 1 只**，`per-child` 隔离。放生 = 软删 `released:true`，可重新领养 | `pets` 集合 |
+| **品种 / breed** | 10 个品种 key（5 猫 5 狗）：`cat_lihua` … `dog_beagle`。**领养时选「物种组」`cat`/`dog`，品种在组内随机 5 选 1 后入库** | `pets.js#SPECIES/randomBreedKey` |
+| **物种组 / speciesGroup** | 仅 `cat`/`dog` 两个值，用于领养二选一 UI | `pets.js#SPECIES_GROUPS` |
+| **阶段 / stage** | 两档：幼崽(0–299) → 成年(≥300)。**由 `growthValue` 派生，不入库** | `pets.js#stageInfo` |
+| **成长瓶 / 心情瓶** | HUD 两个玻璃瓶：左红液按 `stagePct`（阶段内进度，每次投喂液面可见上升）；右蓝液按 `mood`。暗黑破坏神式视觉 | `pages/pet/pet.wxml` |
+| **心情 / mood** | 0–100，投喂 +8、抚摸 +6，久不互动**每小时 -1**（不足 1 小时不扣）。读取时重算，仅在写操作时落库 | `pets.js#applyMoodDecay` |
+| **投喂 / feed** | 花 5 星星 → +10 成长 +8 心情，写 `pet_feed` 流水。**需家长令牌**，每日上限 3 次（`FEED_LIMIT`） | `petCRUD op=feed` |
+| **抚摸 / stroke** | **免费·免家长令牌**（孩子也能玩）→ +6 心情，不扣星星、不写流水 | `petCRUD op=stroke` |
+| **家长模式 / parent mode** | 可写状态。`mode: 'parent'｜'display'`，靠 `parentToken` 支撑 | `app.js` |
+| **展示模式 / display** | 只读状态（默认）。孩子视角 | `app.js` |
+| **R10** | 需求编号：启动即家长模式 + 15 分钟无操作自动回退。本地层已实现；云端层顺延 | `app.js#maybeAutoUnlock/tickIdle` |
+
+### 3.2 工程术语
+
+| 术语 | 含义 |
+|---|---|
+| **数据层自动路由** | `config.CLOUD_ENV` 非空 → `wx.cloud.callFunction`；为空 → `services/local.js`。页面层只调 `api.callApi()`，不感知差异 |
+| **统一契约** | 每个数据操作返回 `{ok:true, ...}` 或 `{ok:false, code, message}`。`callApi` 遇 `ok:false` 抛 `err.code`，页面用 `code` 分支 |
+| **双份镜像 / mirror** | 同一份纯逻辑在前端（`miniprogram/utils/*`）与云端（`cloudfunctions/lib/*`）各存一份，靠**守卫测试**做 `deepStrictEqual` 比对防漂移 |
+| **守卫测试 / guard test** | 断言两处实现口径一致的测试。改任一份不一致 → `npm test` 变红 |
+| **同步 / sync** | `npm run sync` = 跑 `cloudfunctions/setup.js`：把 `lib/*.js` 复制进 13 个云函数目录 |
+| **派生 / derived** | 状态不落库、不人工配对，而由其他状态**计算得出**（stage 由 growthValue 派生；tabBar 显隐由弹层开关派生） |
+| **弹层 / sheet** | 全屏/半屏遮罩弹层。开关字段统一登记在 `tabbar.js#SHEET_KEYS` |
+| **隐私授权闸门** | 相册等隐私 API 需先获《用户隐私保护指引》同意；两条路径：页面预检 与 微信异步兜底 |
+
+---
+
+## 4. 架构要点（改代码前必须知道）
+
+### 4.1 数据层：一份契约，两套实现
+
+```
+页面 → utils/api.js#callApi(name, params)
+         ├─ useCloud() === true  → wx.cloud.callFunction({name, data:params})  → cloudfunctions/<name>/index.js
+         └─ useCloud() === false → services/local.js[name](params)
+                                        ↓ 双方都返回 {ok, ...}
+         ok:false → throw err(code) ；ok:true → 返回 result
+```
+
+- `useCloud()` 以 `app.onLaunch` 显式写入的 `_cloudFlag` 为准（避免启动早期 `getApp()` 时序不确定）。
+- **新增一个数据操作 = 同时改 3 处**：`services/local.js`（本地实现）+ `cloudfunctions/<新函数>/index.js`（云端实现）+ `cloudfunctions/setup.js` 的 `FUNCTIONS` 数组。漏一处即路由不到。
+
+### 4.2 双份镜像清单（改一份必须改另一份）
+
+| 前端 | 云端 | 守卫测试 |
+|---|---|---|
+| `utils/domain.js` | `lib/util.js` + `lib/streak.js` + `lib/level.js` + `lib/checkInCore.js` + `lib/redeemCore.js` | `core.test.js`（displayStreak / levelOf / checkInCore / redeemCore） |
+| `utils/tasks.js` | `lib/visibility.js` | `core.test.js`（visibility 双份一致） |
+| `utils/pets.js` | `lib/pets.js` | `pet.test.js`（pets 双份一致） |
+| `utils/seed.js` | `lib/seed.js` | `seed.test.js` |
+| `services/local.js` 的 PIN 常量 | `lib/pin.js` | `local.test.js`（默认 PIN 口径） |
+| `services/local.js` 的 `REDEEM_BLOCK_MSG` | `redeem/index.js` 的 `BLOCK_MSG` | 无自动化守卫，改时手工对齐 |
+| `custom-tab-bar` 的 list | `app.json` tabBar.list | `tabbar.test.js`（五 tab 四处定义一致） |
+
+### 4.3 云函数自包含
+
+微信开发者工具「上传并部署」**只打包所选函数目录**，跨目录 `require` 不会被上传。因此：
+
+- 每个 `cloudfunctions/<name>/` 自带一份 `lib/`（同内容，13 份副本）。
+- **改 `lib/` 后必须 `npm run sync`**，否则线上跑的还是旧逻辑。
+- `lib/index.js` 是不含 `wx-server-sdk` 的纯逻辑汇总出口（供测试直接 require）；`lib/cloud.js` 才依赖 `wx-server-sdk`，**故意不纳入 index.js**。
+
+### 4.4 鉴权三件套
+
+1. **PIN**：6 位数字，默认 `123456`（建号即内置）。哈希 sha256+盐（云端）/ 轻量 djb2（本地兜底，非安全实现）。
+   - `PIN_SCHEME = 'len6-v1'`：**改位数或哈希口径必须递增此版本号**。老账号 `pinScheme` 不匹配 → login 自动重置为默认 PIN；若迁移未跑到，`unlockParent` 返回 `PIN_SCHEME_STALE` 引导走「忘记 PIN」。
+   - 「忘记 PIN 重置」= **恢复默认 PIN**，不是置为「无 PIN」（否则账号死锁且不报错）。
+2. **家长令牌**：云端为**无状态 HMAC-SHA256**（`base64url({openid,expireAt}) + '.' + sig`），密钥 `XY_TOKEN_SECRET`。因 13 个云函数内存不共享，**不可用服务端 Map**。
+3. **模式态**：`mode` 与 `parentToken` 存内存（`globalData`），不落库。
+   - `onHide` **不清令牌**（`wx.chooseMedia` 等原生能力同样触发 onHide，清了会导致选图回来令牌失效），只记 `_hiddenAt`。
+   - `onShow` 检查 `parentTokenExpire`；`tickIdle` 每 10s 巡检 15 分钟空闲。
+
+### 4.5 自定义 tabBar 必须「派生」而非「配对」
+
+- 页面内 `z-index` **无法越过**自定义 tabBar（实测即使弹层 z-index 300 也被 tabBar 的 90 盖住）。
+- 故：页面 `onShow` 调 `attachTabBarSync(this)`，之后**每次 `setData` 自动**按 `SHEET_KEYS` 重算显隐。**禁止**手写 `setTabBarHidden`（历史遗留约 20 处属冗余兜底，新增不要再写）。
+- ⚠️ **新增任何全屏弹层，必须把开关字段加进 `SHEET_KEYS`**，否则打开时底栏不隐藏。
+
+### 4.6 隐私授权闸门
+
+`app.json` 有 `__usePrivacyCheck__: true`。两条路径：
+
+1. **页面预检**（常规）：`home.onShow` / `mine` 选图前调 `wx.getPrivacySetting` → 主动弹 `privacy-sheet`。
+2. **异步兜底**（竞态）：`app.registerPrivacy()` 注册 `wx.onNeedPrivacyAuthorization`，存下 `resolve` 并通知栈顶页 `onPrivacyNeed()`；用户同意 → `resolvePrivacy(buttonId)` 放行被挂起的 API，**全程不离开当前页**。
+
+声明中必须包含「选中的照片或视频信息」scope。`privacy-sheet` 组件有幂等守卫，勿重复弹。
+
+---
+
+## 5. 数据模型
+
+本地键名（`utils/storage.js#KEYS`）与云端集合名并列：
+
+| 实体 | 本地 key | 云端集合 | 关键字段 |
+|---|---|---|---|
+| 用户 | `xy_user` | `users` | `_id, openid, randomCode(16), nickname, avatar, pinHash, pinSet, pinScheme, createdAt` |
+| 宝宝 | `xy_children` | `children` | `_id, ownerId, name(≤12), avatar, photo, gender(''｜boy｜girl), birthday(YYYY-MM-DD｜''), allergens(≤50), totalStars, streak, lastCheckInDate, createdAt, deleted` |
+| 任务 | `xy_tasks` | `tasks` | `_id, ownerId, childId, title, type('habit'｜'chore'), icon, date, repeat{enabled,type('day'｜'week'),interval,weekdays[]}, score(≥1), priority('high'｜'mid'｜'low'｜'none'), createdAt, deleted` |
+| 奖励 | `xy_rewards` | `rewards` | `_id, ownerId, childId, title, icon, category('reward'｜'punish'), resetAfterRedeem(bool), cost(≥1), createdAt, deleted` |
+| 打卡流水 | `xy_checkIns` | `checkIns` | `_id, childId, taskId, date, score, createdAt`（唯一键 `childId+taskId+date`） |
+| 兑换流水 | `xy_redemptions` | `redemptions` | `_id, childId, rewardId, cost, status:'completed', createdAt` |
+| 积分流水 | `xy_pointsLog` | `pointsLog` | `_id, childId, delta(±), reason, refType('checkin'｜'redeem'｜'checkin_undo'｜'redeem_undo'｜'pet_feed'), refId, createdAt` |
+| 宠物 | `xy_pets` | `pets` | `_id, ownerId, childId, species(品种 key), name(≤8), growthValue, feedCount, strokeCount, mood(0–100), lastMoodAt, daily{date:{feed,stroke}}(保留 60 天), createdAt, released, releasedAt` |
+| 当前宝宝 | `xy_childId` | —（`globalData.childId`） | |
+| 家长令牌 | `xy_parent_token` | —（内存） | 仅本地层用；云端为无状态签名 |
+| 启动即家长模式 | `xy_start_in_parent` | — | 默认 `true` |
+| 自增序号 | `xy_seq` | — | 本地 `nextId(prefix)` 用 |
+
+**软删规则**：`children` / `tasks` / `rewards` 用 `deleted:true`，**读列表必须内存过滤 `deleted`**；`pets` 用 `released:true`（同理，因老文档可能缺该字段，`where released:false` 会漏匹配）。
+
+### 错误码目录
+
+| 类别 | 码 |
+|---|---|
+| 通用 | `INVALID`、`NOT_FOUND`、`FORBIDDEN`、`AUTH_FAIL`、`TOKEN_INVALID`、`NOT_IMPLEMENTED`（api 层） |
+| PIN | `PIN_INVALID`、`PIN_NOT_SET`、`PIN_SCHEME_STALE` |
+| 看板/打卡 | `NO_CHILD`、`CHILD_NOT_FOUND`、`TASK_NOT_FOUND`、`ALREADY_DONE` |
+| 兑换 | `REWARD_NOT_FOUND`、`ALREADY_REDEEMED`、`INSUFFICIENT` |
+| 宝宝 | `LIMIT`（>6）、`LAST_CHILD` |
+| 宠物 | `ALREADY_HAS_PET`、`PET_NOT_FOUND`、`FEED_LIMIT`、`INSUFFICIENT` |
+
+---
+
+## 6. 关键不变量（改了就会出事）
+
+1. **连续天数只用流水重推**。`child.streak` 字段是历史遗留增量计数器，**补打卡场景会算错**（2026-09-18 修复）。展示一律走 `displayStreak`。
+2. **stage 不入库**，由 `growthValue` 派生。
+3. **奖励无库存**。限次只由「是否已兑换过」承担（`resetAfterRedeem`）。
+4. **任务未设重复 → 生效后每天可见**（不是仅生效当天）。
+5. **PIN 镜像 4 处**：`lib/pin.js`（源）+ 13 份 lib 副本（`npm run sync`）+ `services/local.js` 常量 + 测试断言。改位数/哈希必递增 `PIN_SCHEME`。
+6. **本地包内图片禁用 webp**（`<image>` 不解析本地 webp，仅网络资源有效）→ 一律 PNG-8（256 色量化 + 透明）。
+7. **设计稿换算比 1px ≈ 1.923rpx**（750rpx = 屏宽）。配色只认 `app.wxss` 的 CSS 变量，**不得自行改配色**（视觉基线 `docs/design-雨宝记-UI.html`）。
+8. **弹层交互约定**：`.mask` 绑 `bindtap="关闭"`、`.sheet` 绑 `catchtap="noop"`。**绝不要在 `.mask` 上写 `catchtap`**（会吞掉蒙层点击 → 「点哪儿都关不掉」，已踩过）。
+9. **表单弹层必须带 `.sheet-x` 关闭按钮**（只有底部「保存」时用户会以为无法取消）。
+10. **`<input>` 必须显式 `height` + `line-height`，`padding` 只留左右**（小程序 input 自带固定高度，上下 padding 会压扁内容区 → 文字只露一半）。
+
+---
+
+## 7. 隐式前提 / 排查清单
+
+### 「元素在但看不见」优先级顺序
+**先怀疑高度与层级，再怀疑数据。**
+
+| 症状 | 首查 |
+|---|---|
+| 弹层底部按钮点不到 | 是否漏登记 `SHEET_KEYS` → tabBar 未隐藏 |
+| 内容区空白 | 容器高度归零 / 误用 `scroll-view`（本项目**禁用 scroll-view**，改容器 `overflow:auto`） |
+| input 文字被裁 | 是否只写了上下 padding（见 §6.10） |
+| 弹层关不掉 | `.mask` 是否误写 `catchtap` |
+| 数据「没更新」 | 受控刷新是否用递增计数触发 |
+
+### 其他
+- **弹层最大高 78vh**（`.sheet{max-height:78vh}`）。
+- 层级约定：`fab 95 < 页面弹层 200 < day-sheet 300 < emoji-picker 400 < pin-pad 500`；自定义 tabBar = 90。
+- **本机环境坑**：删除文件只能用 `node -e "fs.rmSync(...)"`；Git Bash 的 `rm` / PowerShell `Remove-Item` 在本机**静默失效**。git 在坏 Git Bash 下用 `node -e "require('child_process').execFileSync('git',[...])"`。
+- 开发者工具「预览」走系统代理：Clash `127.0.0.1:7897` 未运行会 `ECONNREFUSED` → 切「不使用任何代理」。
+
+---
+
+## 8. 已知架构债（改进方向候选）
+
+按「对架构演进的影响」排序，每条都附现状证据：
+
+| # | 债务 | 现状 | 改进方向 |
+|---|---|---|---|
+| D1 | **双份镜像无单一来源** | `domain/tasks/pets/seed` 4 组逻辑各存两份，靠守卫测试兜底；新口径需手改两处并保证字面等价 | 抽 `shared/` 单一来源 + 构建期复制；或将前端镜像改为「从 lib 生成」（当前因小程序不能 require 仓库外路径而无法直接共用） |
+| D2 | **lib 副本膨胀** | `setup.js` 把 12 个 lib 文件复制进 13 个函数目录 = 156 个副本（占 cloudfunctions 下 182 个 js 的 86%），改 lib 后必须记得 `npm run sync` | 提交前加 `--check` 模式校验副本与源一致（防忘同步）；或改用云函数公共依赖方案 |
+| D3 | **`services/local.js` 单体 842 行** | 一个文件承担 14 个操作 + 校验 + 哈希 + 视图映射 | 按域拆为 `local/{auth,dashboard,checkin,reward,child,feed,pet}.js`，`local.js` 只做聚合导出 |
+| D4 | **页面 JS 偏大** | `mine.js 559` / `pet.js 421` / `home.js 376`，弹层状态与业务逻辑同处一文件 | 弹层状态机抽为自定义 hook/行为模块；纯展示计算下沉到 utils |
+| D5 | **注释口径漂移** | `miniprogram/services/local.js:2` 仍写「接口契约与 **8 个云函数**完全一致」，实际 **13 个**；`lib/token.js` 内的「8 个云函数」属历史设计说明（`docs/README-小程序.md` 已记录 8→13 的修正）。功能无影响，但会误导读代码的人 | 修正 `local.js` 注释为 13，并考虑加「函数集一致性」守卫（`setup.js` 的 `FUNCTIONS` ↔ 实际目录 ↔ `local.js` 导出） |
+| D6 | **密钥有开发默认值** | `lib/token.js` 兜底 `xiaoyu-dev-secret-change-me`；`lib/pin.js` 兜底 `xiaoyu-pin-salt`。且 `README-小程序.md` 含真实密钥（已 gitignore） | 云端部署前必须配置 `XY_TOKEN_SECRET` / `XY_PIN_SALT` 环境变量并轮换；考虑启动时检测未配置则抛错 |
+| D7 | **本地层静默解锁绕过 PIN** | `unlockParent({silent:true})` 本地可免 PIN 签发令牌（设备信任模型），云端未接入 | 云端接入设备信任后再放开；当前若误开云端会退回「不静默」，属安全设计而非 bug |
+| D8 | **无静态类型 / 无 lint** | 仅 `check-syntax.js` 做语法解析；字段口径靠 tests + 本文件 | 引入 `eslint` + `//@ts-check` + JSDoc，至少覆盖 `utils/*` 与 `lib/*` |
+| D9 | **命名不一致** | 本地 `xy_checkIns` vs 云端集合 `checkIns`；历史 `xiaoyu` 前缀 | 属刻意保留，不建议改；如需统一，走一次性迁移脚本 + 幂等守卫 |
+| D10 | **`resetAll` 只在本地** | `services/local.js` 导出演示用 `resetAll`，无云端对应 | 保持现状即可（否则云上会「一键删数据」）；如需云端重置请加二次确认 + 令牌 |
+
+---
+
+## 9. 常用命令与工作流
+
+```bash
+npm test          # 6 个测试文件（node:test，无依赖）—— 65 个用例
+npm run check     # 全量语法解析（miniprogram/cloudfunctions/__tests__/tools，~213 文件）
+npm run sync      # ⚠️ 改过 cloudfunctions/lib/ 后必跑：重建 package.json + 复制 lib 到 13 个函数
+npm run acceptance      # tools/acceptance.js —— 数据层接口验收
+npm run ui-acceptance   # tools/ui-acceptance.js —— WXML 结构验收
+```
+
+### 标准改动流程
+
+```
+改纯逻辑（domain/tasks/pets/seed）
+  → 同步云端镜像（lib/*）
+  → npm run sync
+  → npm test（守卫测试必须绿）
+
+改数据操作（新增/修改 op）
+  → local.js + cloudfunctions/<name>/index.js + setup.js FUNCTIONS
+  → npm test（pet.test.js 有「本地函数集与云函数集一一对应」守卫）
+  → npm run acceptance
+
+改 UI（wxml/wxss）
+  → 开全屏弹层？→ 登记 SHEET_KEYS
+  → 新增图标？→ 只用单码位 emoji（core.test.js 有守卫）
+  → npm run ui-acceptance + npm run check
+```
+
+### 每次交付自检
+`APP_VERSION` 是否递增（否则「关于」页仍显示旧版本，说明开发者工具没编译到最新代码）。
+
+---
+
+## 10. 发布状态与待办（架构相关）
+
+- **已完成**：v1.0 本地层全功能、65/65 测试、全量语法 0 错误、宠物模块定稿、隐私授权闸门修复。
+- **顺延 V1.1（云侧）**：云端部署 → `CLOUD_ENV` 填写 → R10 云端静默解锁 → `petCRUD` 云上线 → 密钥轮换。
+- **待用户完成**（非代码）：MP 后台填隐私指引正文 + 勾选照片 scope、改服务类目、个人备案、提审、备案号展示于「关于」页、3 轮真机走查（详见 `docs/v1.0-release-checklist.md`）。
+- **AppID**：`wxb80f4e43f9c99714`（本人账号）；服务类目 工具-效率；备案主体 个人。
+
+---
+
+*本文件由代码实况反推生成，用于降低后续架构改进的认知成本。修改架构后请同步更新 §2 / §4 / §5 / §8。*
