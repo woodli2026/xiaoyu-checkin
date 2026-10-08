@@ -370,10 +370,10 @@ test('petCRUD: 领养 → 投喂(扣星星) → 抚摸(免费) → 改名 → �
   child.totalStars = 20;
   store[s.KEYS.children] = children;
 
-  // 8. 投喂：-5 星星 / +10 成长 / +8 心情 / 写一条 pet_feed 流水
+  // 8. 投喂：-1 星星 / +10 成长 / +8 心情 / 写一条 pet_feed 流水
   const f1 = await local.petCRUD({ op: 'feed', childId, parentToken: token });
   assert.strictEqual(f1.ok, true);
-  assert.strictEqual(f1.totalStars, 15);
+  assert.strictEqual(f1.totalStars, 19);
   assert.strictEqual(f1.pet.growthValue, P.PET_GROWTH_PER_FEED);
   assert.strictEqual(f1.pet.feedCount, 1);
   assert.strictEqual(f1.pet.mood, P.MOOD_INIT + P.MOOD_PER_FEED);
@@ -405,7 +405,7 @@ test('petCRUD: 领养 → 投喂(扣星星) → 抚摸(免费) → 改名 → �
   assert.strictEqual(Math.round(f3.pet.stagePct * 100) / 100, 10);
   assert.strictEqual(f3.pet.stageName, '幼崽');
   assert.strictEqual(f3.pet.emoji, '🐱');
-  assert.strictEqual(f3.totalStars, 5);
+  assert.strictEqual(f3.totalStars, 17);
   // 心情：60+8+6+8+8 = 90（未到 100，不封顶）
   assert.strictEqual(f3.pet.mood, 90);
 

@@ -29,7 +29,7 @@ const SPECIES_GROUPS = [
 // 老 key 兼容默认品种（读取时映射，不改写历史数据）：cat→狸花猫、dog→田园犬黄
 const DEFAULT_BREED_KEY = { cat: 'cat_lihua', dog: 'dog_yellow' };
 
-const PET_FEED_COST = 5;            // 投喂消耗星星
+const PET_FEED_COST = 1;            // 投喂消耗星星（2026-10-08 由 5 改为 1：降低孩子养宠门槛）
 const PET_GROWTH_PER_FEED = 10;     // 每次投喂 +10 成长值
 const GROWTH_MAX = 300;            // 成年阈值 = 成长「血条」总框（当前经验进度作为当前血量）
 const MOOD_INIT = 60;               // 领养初始心情（2026-09 调整：80 → 60）
