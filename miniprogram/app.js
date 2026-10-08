@@ -1,6 +1,6 @@
 // app.js —— 全局基座：云初始化 / 静默登录 / 双模式态 / 家长Token生命周期
 const { callApi, setUseCloud } = require('./utils/api');
-const { CLOUD_ENV, APP_VERSION, PARENT_IDLE_MS } = require('./config');
+const { CLOUD_ENV, APP_VERSION, PARENT_IDLE_MS, BEIAN_NO } = require('./config');
 const s = require('./utils/storage');
 const D = require('./utils/domain');
 
@@ -14,7 +14,8 @@ App({
     _hiddenAt: 0,          // 最近一次 onHide 时刻；用于区分「真·离场」与「调用系统相机/相册」
     useCloud: false,       // 是否启用云端（填了 CLOUD_ENV 且 init 成功才 true）
     privacyResolve: null,  // wx.onNeedPrivacyAuthorization 挂起的 resolve（隐私弹层同意后放行）
-    version: APP_VERSION
+    version: APP_VERSION,
+    beianNo: BEIAN_NO      // 备案号（关于页底部展示；备案完成后在 config.js 填入）
   },
 
   // 最近一次用户交互时刻（毫秒）。用于「连续 15 分钟无操作自动回到展示模式」（R10）。

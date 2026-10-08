@@ -17,7 +17,7 @@ Page({
     mode: 'display', pinSet: false, useCloud: false,
     user: { nickname: '', avatar: '🧒', randomCode: '' },
     child: null, childId: '', children: [],
-    version: '1.0.0', todayStr: '',
+    version: '1.0.0', todayStr: '', beianNo: '',
     showPin: false, pinError: '', pinAttempt: 0,
     showSetPin: false, setPinStage: 'new', pendingPin: '', setPinErr: '',
     showBabyList: false,
@@ -59,6 +59,7 @@ Page({
       user: { nickname: u.nickname || '', avatar: u.avatar || '🧒', randomCode: u.randomCode || '' },
       childId: app.globalData.childId,
       version: app.globalData.version,
+      beianNo: app.globalData.beianNo,
       todayStr,
       startInParent: s.read(s.KEYS.startInParent, true)
     });

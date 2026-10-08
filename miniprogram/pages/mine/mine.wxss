@@ -17,6 +17,7 @@
 .ab-emoji { font-size: 115rpx; line-height: 1.2; }
 .ab-ver { font-size: 27rpx; color: var(--ink-soft); margin-bottom: 19rpx; }
 .ab-desc { font-size: 28rpx; color: var(--ink); line-height: 1.7; text-align: left; }
+.ab-beian { font-size: 23rpx; color: var(--ink-soft); margin-top: 23rpx; letter-spacing: 0.5rpx; }
 
 .edit-err { font-size: 25rpx; color: var(--coral); margin: 15rpx 0; text-align: center; }
 .edit-err + .ed-actions { margin-top: 19rpx; }

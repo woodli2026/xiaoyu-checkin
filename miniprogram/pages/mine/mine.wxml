@@ -209,6 +209,7 @@
     <view class="sheet-h center"><text class="sh-t">雨宝记</text></view>
     <view class="ab-ver">版本 v{{version}}</view>
     <view class="ab-desc">专为小学生设计的家庭习惯养成小程序。以星星激励，把「家长布置 → 孩子打卡 → 攒星星 → 兑奖励」串成正向闭环。</view>
+    <view wx:if="{{beianNo}}" class="ab-beian">备案号 {{beianNo}}</view>
     <view class="m-close" bindtap="closeAbout">关闭</view>
   </view>
 </view>
