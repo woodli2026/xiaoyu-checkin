@@ -3,6 +3,7 @@ const { callApi, setUseCloud } = require('./utils/api');
 const { CLOUD_ENV, APP_VERSION, PARENT_IDLE_MS, BEIAN_NO } = require('./config');
 const s = require('./utils/storage');
 const D = require('./utils/domain');
+const session = require('./utils/parent-session');
 
 App({
   globalData: {
@@ -77,11 +78,8 @@ App({
     if (!startInParent) return;
     try {
       const res = await callApi('unlockParent', { silent: true });
-      g.parentToken = res.parentToken;
-      g.parentTokenExpire = res.expireAt;
-      g.mode = 'parent';
-      this.lastActive = Date.now();
-      this.syncMode();
+      // 令牌签发收口到家长会话（写 token/expire/mode + 重置空闲基准 + syncMode，ADR-0001）
+      session.adopt(res, this);   // onLaunch 期显式传 this，避免 getApp() 时序不确定
     } catch (e) {
       // 静默解锁失败绝不应阻断启动：回退展示模式即可，用户仍可手动 PIN 进入。
       console.warn('[xiaoyu] 启动自动解锁失败，回退展示模式', e && e.code);

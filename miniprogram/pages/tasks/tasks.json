@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "emoji-picker": "/components/emoji-picker/emoji-picker"
+    "emoji-picker": "/components/emoji-picker/emoji-picker",
+    "pin-pad": "/components/pin-pad/pin-pad"
   },
   "navigationBarTitleText": "任务屋"
 }

@@ -214,6 +214,11 @@
   </view>
 </view>
 
+<!-- 家长会话恢复（ADR-0001）：投喂等写操作令牌失效时由 seam 唤起；无忘记 PIN 入口（自救走首页/我页） -->
+<pin-pad show="{{showPin}}" title="重新解锁家长模式" sub="输入 PIN 后将自动继续刚才的操作"
+         error="{{pinError}}" attempt="{{pinAttempt}}"
+         bind:complete="onPinComplete" bind:close="onPinClose" />
+
 <!-- 撒花层 -->
 <view class="confetti-layer">
   <view wx:for="{{confetti}}" wx:key="id" class="confetti-piece"

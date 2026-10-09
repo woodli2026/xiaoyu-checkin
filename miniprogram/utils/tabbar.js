@@ -8,7 +8,8 @@
 // 必须主动隐藏 tabBar，否则弹层底部的按钮与文字会被底部导航遮挡。
 //
 // 【为什么是「派生」而不是「人工配对」】
-// 最初的做法是在每个打开/关闭弹层的地方各写一句 setTabBarHidden(...)，全项目 31 处。
+// 最初的做法是在每个打开/关闭弹层的地方各写一句 setTabBarHidden(...)，全项目 31 处；
+// 现改为下面的派生机制，页面内显式调用已于 2026-10-09 全部删除（见第 40 行说明）。
 // 结果必然漏：`tasks.save()` 保存成功后只 setData({showEditor:false})、忘了恢复，
 // 表现为「新增/编辑任务保存后底部导航消失」。
 // 现改为：页面只需在 onShow 里 attachTabBarSync(this)，之后**每次 setData 都会
@@ -37,11 +38,11 @@ function getTabBar(page) {
 
 // hidden = true 隐藏，false 显示
 //
-// 【关于页面里残留的显式调用】
-// 三个页面中还留有约 20 处 `setTabBarHidden(this, ...)`，那是改造成派生机制之前的写法。
-// 它们如今是**冗余的**：方向与 syncTabBar 的计算结果一致，且紧随其后的 setData 回调
-// 会再校正一次，因此不会产生冲突，留作兜底（万一某时机 getTabBar() 取不到实例）。
-// ⚠️ 但**新增代码不要再写它们** —— 只改弹层开关（setData）即可，显隐会自动跟随。
+// 【页面内显式调用已于 2026-10-09 全部删除】
+// 派生机制上线后，5 个页面原本残留的 42 处 `setTabBarHidden(this, ...)`（含 3 处只按单字段
+// 手工重算派生值的错误写法）已全部移除。如今 tabBar 显隐完全由 attachTabBarSync 包装的
+// setData → syncTabBar → anySheetOpen(SHEET_KEYS) 派生，无第二条来路。
+// ⚠️ 新增代码**禁止**写 setTabBarHidden —— 只改弹层开关（setData）即可，显隐会自动跟随。
 function setTabBarHidden(page, hidden) {
   const bar = getTabBar(page);
   if (!bar || typeof bar.setData !== 'function') return;

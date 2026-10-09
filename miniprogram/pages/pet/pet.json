@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "宠物",
-  "usingComponents": {}
+  "usingComponents": {
+    "pin-pad": "/components/pin-pad/pin-pad"
+  }
 }

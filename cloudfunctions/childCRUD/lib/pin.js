@@ -1,7 +1,22 @@
 // cloudfunctions/lib/pin.js —— 家长 PIN 哈希（sha256 + 盐）
+//
+// 【D6 安全修复 / 2026-10-09】
+// 旧实现为 `const SALT = process.env.XY_PIN_SALT || 'xiaoyu-pin-salt'`，环境变量缺失时
+// 回退到硬编码的公开盐 —— 任何人拿到源码即可离线彩虹表爆破 6 位 PIN（仅 100 万种）。
+// 现改为：环境变量缺失即在**使用点抛错**（fail-fast，惰性，不打挂 tests/）。
+// 由 __tests__/secret-guard.test.js 守卫，防止回退。
+//
+// 注：前端本地兜底层 services/local.js 用的是独立的轻量哈希（'xiaoyu$local' 前缀），
+// 与云端盐无关；两者数据不互通，故云端换盐不影响本地单机模式。
 const crypto = require('crypto');
 
-const SALT = process.env.XY_PIN_SALT || 'xiaoyu-pin-salt';
+function getSalt(salt) {
+  const s = salt || process.env.XY_PIN_SALT;
+  if (!s) {
+    throw new Error('XY_PIN_SALT 未配置：必须在云函数环境变量中设置 PIN 哈希盐，否则无法校验/写入 PIN');
+  }
+  return s;
+}
 
 // 默认 PIN：建号即内置，便于家庭内测直接进入家长模式（6 位）
 // 口径：「忘记 PIN 重置」= 恢复为该默认值，而非清空（见 README §9）
@@ -15,7 +30,7 @@ const PIN_LENGTH = 6;
 const PIN_SCHEME = 'len6-v1';
 
 function hashPin(pin, salt) {
-  return crypto.createHash('sha256').update((salt || SALT) + '::' + String(pin)).digest('hex');
+  return crypto.createHash('sha256').update(getSalt(salt) + '::' + String(pin)).digest('hex');
 }
 
 function verifyPin(pin, hash, salt) {
@@ -38,6 +53,6 @@ function isCurrentPinScheme(user) {
 }
 
 module.exports = {
-  SALT, DEFAULT_PIN, PIN_LENGTH, PIN_SCHEME,
+  getSalt, DEFAULT_PIN, PIN_LENGTH, PIN_SCHEME,
   hashPin, verifyPin, isValidPin, defaultPinHash, isCurrentPinScheme
 };

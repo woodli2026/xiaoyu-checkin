@@ -188,3 +188,8 @@
 
 <!-- 新建入口：家长模式下常驻右下角（抬到 tabBar 之上） -->
 <view wx:if="{{mode === 'parent'}}" class="fab" bindtap="onFab">＋</view>
+
+<!-- 家长会话恢复（ADR-0001）：写操作令牌失效时由 seam 唤起；无忘记 PIN 入口（自救走首页/我页） -->
+<pin-pad show="{{showPin}}" title="重新解锁家长模式" sub="输入 PIN 后将自动继续刚才的操作"
+         error="{{pinError}}" attempt="{{pinAttempt}}"
+         bind:complete="onPinComplete" bind:close="onPinClose" />

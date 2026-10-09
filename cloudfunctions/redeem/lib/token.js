@@ -6,12 +6,26 @@
 // 因此改为「无状态签名令牌」：unlockParent 用服务端密钥对 {openid, expireAt} 做
 // HMAC-SHA256 签名，任何写函数都能独立校验签名与过期时间，无需共享内存 —— 且
 // 仍满足「必须持有效 parentToken 才能写」的防越权要求（PRD §3 安全）。
+//
+// 【D6 安全修复 / 2026-10-09】
+// 旧实现为 `const SECRET = process.env.XY_TOKEN_SECRET || 'xiaoyu-dev-secret-change-me'`，
+// 即环境变量缺失时**回退到硬编码的公开弱密钥**：云函数照常运行、家长令牌可被任何人伪造，
+// 而运维侧完全看不出异常（静默失败，最危险的那种）。
+// 现改为：环境变量缺失即在**使用点抛错**（fail-fast）。
+// 注意必须是「惰性」校验 —— 若在模块加载时抛错，会打挂 __tests__（测试环境不配密钥），
+// 且测试用显式传参绕过。由 __tests__/secret-guard.test.js 守卫，防止回退。
 const crypto = require('crypto');
 
-const SECRET = process.env.XY_TOKEN_SECRET || 'xiaoyu-dev-secret-change-me';
+function getSecret(secret) {
+  const s = secret || process.env.XY_TOKEN_SECRET;
+  if (!s) {
+    throw new Error('XY_TOKEN_SECRET 未配置：必须在云函数环境变量中设置家长令牌 HMAC 密钥，否则无法签发/校验令牌');
+  }
+  return s;
+}
 
 function sign(payload, secret) {
-  return crypto.createHmac('sha256', secret || SECRET).update(payload).digest('hex');
+  return crypto.createHmac('sha256', getSecret(secret)).update(payload).digest('hex');
 }
 
 function randHex(len) {
@@ -42,4 +56,4 @@ function verifyToken(token, openid, secret, now) {
   return true;
 }
 
-module.exports = { SECRET, sign, randHex, issueToken, verifyToken };
+module.exports = { getSecret, sign, randHex, issueToken, verifyToken };

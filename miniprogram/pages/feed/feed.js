@@ -1,12 +1,10 @@
-// pages/feed —— Tab3：动态（全部宝宝的打卡 + 兑换流水；撤销需家长模式）
 const { callApi } = require('../../utils/api');
 const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
 const F = require('../../utils/feed');
-const { setTabBarHidden, attachTabBarSync } = require('../../utils/tabbar');
-
+const { attachTabBarSync } = require('../../utils/tabbar');
+const session = require('../../utils/parent-session');
 const PAGE_SIZE = 30;
-
 function modal(options) {
   return new Promise((resolve) => {
     wx.showModal(Object.assign({}, options, {
@@ -15,27 +13,21 @@ function modal(options) {
     }));
   });
 }
-
 Page({
+  behaviors: [require('../../behaviors/pin-reauth')],
   data: {
     mode: 'display', pinSet: false, useCloud: false,
     groups: [], total: 0, loading: false, hasMore: false,
-    showDetail: false, detail: null, detailErr: '', busy: false,
-    showPin: false, pinError: '', pinAttempt: 0
+    showDetail: false, detail: null, detailErr: '', busy: false
   },
-
-  // 任意点击重置家长模式空闲计时（R10）
   onAppTouch() { getApp().touch(); },
-
   onShow() {
-    // 自定义 tabBar 需由页面主动同步选中态（本页为第 3 个 tab，索引 2）
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 3 });
     }
     attachTabBarSync(this);
     this.refresh();
   },
-
   async refresh() {
     const app = getApp();
     try { await app.whenReady(); } catch (e) { return; }
@@ -46,13 +38,10 @@ Page({
     });
     await this.reload();
   },
-
-  // 重新拉第一页（撤销后 / 每次进入页面都会调用）
   async reload() {
     this._items = [];
     await this.loadMore();
   },
-
   async loadMore() {
     if (this.data.loading) return;
     this.setData({ loading: true });
@@ -73,10 +62,7 @@ Page({
       this.setData({ loading: false });
     }
   },
-
   onReachBottom() { if (this.data.hasMore) this.loadMore(); },
-
-  // —— 详情 ——
   openDetail(e) {
     const id = e.currentTarget.dataset.id;
     const it = (this._items || []).find(x => x.id === id);
@@ -95,12 +81,9 @@ Page({
       detail.categoryLabel = T.CATEGORY_LABEL[it.category] || '奖励';
     }
     this.setData({ showDetail: true, detail, detailErr: '' });
-    setTabBarHidden(this, true);
   },
-  closeDetail() { this.setData({ showDetail: false, detail: null, detailErr: '' }); setTabBarHidden(this, false); },
+  closeDetail() { this.setData({ showDetail: false, detail: null, detailErr: '' }); },
   noop() {},
-
-  // —— 家长模式（本页右上角锁图标，与首页同逻辑）——
   toggleParent() {
     const app = getApp();
     if (this.data.mode === 'parent') {
@@ -114,32 +97,9 @@ Page({
       return;
     }
     this.setData({ showPin: true, pinError: '' });
-    setTabBarHidden(this, true);
   },
-  async onPinComplete(e) {
-    const app = getApp();
-    try {
-      const res = await callApi('unlockParent', { pin: e.detail.pin });
-      app.globalData.parentToken = res.parentToken;
-      app.globalData.parentTokenExpire = res.expireAt;
-      app.globalData.mode = 'parent';
-      this.setData({ showPin: false, pinError: '', mode: 'parent' });
-      setTabBarHidden(this, false);
-      wx.showToast({ title: '已进入家长模式', icon: 'success' });
-    } catch (err) {
-      // attempt 必须递增：同一句错误文案第二次不变化会让输入无法复位
-      this.setData({
-        pinError: (err && err.message) || 'PIN 不正确',
-        pinAttempt: this.data.pinAttempt + 1
-      });
-    }
-  },
-  onPinClose() { this.setData({ showPin: false, pinError: '' }); setTabBarHidden(this, false); },
-
-  // —— 撤销：标记为未完成 / 取消兑换 ——
   async undoCheckIn() { await this._undo('undoCheckIn'); },
   async undoRedeem() { await this._undo('undoRedeem'); },
-
   async _undo(op) {
     const it = this.data.detail;
     if (!it || this.data.busy) return;
@@ -155,11 +115,10 @@ Page({
         : '将取消「' + it.childName + '」兑换的「' + it.title + '」，并返还 ' + it.stars + ' 颗星。确定？'
     });
     if (!r.confirm) return;
-
     const app = getApp();
     this.setData({ busy: true, detailErr: '' });
     try {
-      await callApi('feedCRUD', { op, id: it.id, parentToken: app.globalData.parentToken });
+      await callApi('feedCRUD', { op, id: it.id });
       wx.showToast({ title: isCheckin ? '已标记为未完成' : '已取消兑换', icon: 'none' });
       this.setData({ showDetail: false, detail: null, busy: false });
       await this.reload();

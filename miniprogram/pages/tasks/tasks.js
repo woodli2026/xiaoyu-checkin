@@ -1,12 +1,10 @@
-// pages/tasks —— Tab2：任务屋（任务 / 奖励两子页签；建/改/删写操作仅家长模式）
 const { callApi } = require('../../utils/api');
 const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
-const { setTabBarHidden, attachTabBarSync } = require('../../utils/tabbar');
-
+const { attachTabBarSync } = require('../../utils/tabbar');
+const session = require('../../utils/parent-session');
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 function todayStr() { return D.ymd(new Date()); }
-
 function emptyTaskForm(childId) {
   return {
     childId, title: '', type: 'habit', icon: '✏️',
@@ -16,12 +14,11 @@ function emptyTaskForm(childId) {
     score: 1, priority: 'none'
   };
 }
-// 奖励不再有库存：限次由 resetAfterRedeem 承担（否 = 每位孩子只能兑一次）
 function emptyRewardForm(childId) {
   return { childId, title: '', icon: '🎁', category: 'reward', resetAfterRedeem: true, cost: 5 };
 }
-
 Page({
+  behaviors: [require('../../behaviors/pin-reauth')],
   data: {
     mode: 'display', pinSet: false, subTab: 'task',
     tasks: [], rewards: [],
@@ -31,21 +28,14 @@ Page({
     showIcon: false,
     showConfirm: false, confirmKind: '', confirmId: '', confirmTitle: ''
   },
-
-  // 任意点击重置家长模式空闲计时（R10）
   onAppTouch() { getApp().touch(); },
-
   onShow() {
-    // 自定义 tabBar 需由页面主动同步选中态。
-    // tabBar 的显隐不再靠人工配对：attachTabBarSync 会在每次 setData 后
-    // 按弹层开关自动重算，因此不存在「忘了恢复」的可能（详见 utils/tabbar.js）
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 2 });
     }
     attachTabBarSync(this);
     this.refresh();
   },
-
   async refresh() {
     const app = getApp();
     try { await app.whenReady(); } catch (e) { return; }
@@ -55,7 +45,6 @@ Page({
     });
     await this.load();
   },
-
   async load() {
     const app = getApp();
     try {
@@ -75,9 +64,7 @@ Page({
       wx.hideLoading();
     }
   },
-
   switchSub(e) { this.setData({ subTab: e.currentTarget.dataset.tab }); },
-
   requireParent() {
     if (this.data.mode !== 'parent') {
       wx.showToast({ title: '请点击首页右上角锁图标开启家长模式', icon: 'none' });
@@ -85,24 +72,19 @@ Page({
     }
     return true;
   },
-
   onFab() {
     if (!this.requireParent()) return;
     if (this.data.subTab === 'task') this.openCreateTask();
     else this.openCreateReward();
   },
-
   openCreateTask() {
     if (!this.requireParent()) return;
     this.setData({ showEditor: true, editorKind: 'task', editing: false, form: emptyTaskForm(getApp().globalData.childId) });
-    setTabBarHidden(this, true);
   },
   openCreateReward() {
     if (!this.requireParent()) return;
     this.setData({ showEditor: true, editorKind: 'reward', editing: false, form: emptyRewardForm(getApp().globalData.childId) });
-    setTabBarHidden(this, true);
   },
-
   openTask(e) {
     if (!this.requireParent()) return;
     const t = this.data.tasks.find(x => x._id === e.currentTarget.dataset.id);
@@ -119,9 +101,7 @@ Page({
         score: t.score, priority: t.priority || 'none'
       }
     });
-    setTabBarHidden(this, true);
   },
-
   openReward(e) {
     if (!this.requireParent()) return;
     const r = this.data.rewards.find(x => x._id === e.currentTarget.dataset.id);
@@ -134,34 +114,23 @@ Page({
         cost: r.cost
       }
     });
-    setTabBarHidden(this, true);
   },
-
-  // 供弹层内部 catchtap 使用：吞掉冒泡，避免点弹层内容时误触发蒙层的「点击关闭」
   noop() {},
-
-  closeEditor() { this.setData({ showEditor: false }); setTabBarHidden(this, false); },
-
-  // —— 表单交互 ——
+  closeEditor() { this.setData({ showEditor: false }); },
   onInput(e) { this.setData({ ['form.' + e.currentTarget.dataset.field]: e.detail.value }); },
   onSwitch(e) { this.setData({ ['form.' + e.currentTarget.dataset.field]: e.detail.value }); },
   onPickDate(e) { this.setData({ 'form.date': e.detail.value }); },
   onSelect(e) { this.setData({ ['form.' + e.currentTarget.dataset.field]: e.currentTarget.dataset.value }); },
-  // 布尔型 seg（是 / 否）：dataset 统一走字符串，避开不同基础库对 {{true}} 的类型转换差异
   onSelectSwitch(e) {
     const field = e.currentTarget.dataset.field;
     this.setData({ ['form.' + field]: e.currentTarget.dataset.value === 'yes' });
   },
-  // 星星数量：手动录入数字（替代原步进器）。
-  // 只保留数字字符，并**允许暂时为空** —— 若输入过程中就 clamp 到最小值，
-  // 用户会删不掉原值、无法重新输入（取值范围放到保存时校验）。
   onNumInput(e) {
     const field = e.currentTarget.dataset.field;
     let v = String(e.detail.value == null ? '' : e.detail.value).replace(/\D/g, '');
     if (v.length > 2) v = v.slice(0, 2);   // 最多两位 → 有效范围 1–99
     this.setData({ ['form.' + field]: v });
   },
-  // 重复方式三选一：否 / 每 N 天 / 按周
   onRepeatMode(e) {
     const mode = e.currentTarget.dataset.mode;
     if (mode === 'none') this.setData({ 'form.repeatEnabled': false });
@@ -173,13 +142,10 @@ Page({
     const cur = this.data.form.weekdays || [];
     this.setData({ ['form.weekdays[' + wd + ']']: !cur[wd] });
   },
-  // 图标选择器是从编辑弹层里打开的：关闭它之后编辑弹层仍在，所以这里不恢复 tabBar
-  openIcon() { this.setData({ showIcon: true }); setTabBarHidden(this, true); },
+  openIcon() { this.setData({ showIcon: true }); },
   onIconPick(e) { this.setData({ 'form.icon': e.detail.icon, showIcon: false }); },
   onIconClose() { this.setData({ showIcon: false }); },
-
   async save() {
-    const app = getApp();
     const f = this.data.form;
     if (!f.title || !String(f.title).trim()) { wx.showToast({ title: '请填写标题', icon: 'none' }); return; }
     try {
@@ -198,9 +164,9 @@ Page({
         };
         if (this.data.editing) {
           payload.id = f._id;
-          await callApi('taskCRUD', { op: 'update', parentToken: app.globalData.parentToken, payload });
+          await callApi('taskCRUD', { op: 'update', payload });
         } else {
-          await callApi('taskCRUD', { op: 'create', parentToken: app.globalData.parentToken, payload });
+          await callApi('taskCRUD', { op: 'create', payload });
         }
       } else {
         const cost = Number(f.cost);
@@ -211,13 +177,11 @@ Page({
         };
         if (this.data.editing) {
           payload.id = f._id;
-          await callApi('rewardCRUD', { op: 'update', parentToken: app.globalData.parentToken, payload });
+          await callApi('rewardCRUD', { op: 'update', payload });
         } else {
-          await callApi('rewardCRUD', { op: 'create', parentToken: app.globalData.parentToken, payload });
+          await callApi('rewardCRUD', { op: 'create', payload });
         }
       }
-      // 走统一的关闭入口：既关弹层、也恢复底部导航（此前这里只 setData，
-      // 漏了恢复 tabBar → 「新增/编辑任务保存后底部导航消失」）
       this.closeEditor();
       wx.showToast({ title: '已保存', icon: 'success' });
       await this.load();
@@ -225,8 +189,6 @@ Page({
       wx.showToast({ title: (e && e.message) || '保存失败', icon: 'none' });
     }
   },
-
-  // —— 删除（二次确认 + 软删）——
   askDelete(e) {
     if (!this.requireParent()) return;
     const kind = e.currentTarget.dataset.kind;
@@ -235,29 +197,24 @@ Page({
       ? this.data.tasks.find(x => x._id === id)
       : this.data.rewards.find(x => x._id === id);
     this.setData({ showConfirm: true, confirmKind: kind, confirmId: id, confirmTitle: (item && item.title) || '' });
-    setTabBarHidden(this, true);
   },
   cancelDelete() {
     this.setData({ showConfirm: false });
-    // 删除确认可能由编辑弹层内触发：若编辑弹层仍在，tabBar 需保持隐藏
-    setTabBarHidden(this, !!this.data.showEditor);
   },
   async doDelete() {
-    const app = getApp();
     const kind = this.data.confirmKind;
     const id = this.data.confirmId;
     try {
       if (kind === 'task') {
-        await callApi('taskCRUD', { op: 'delete', parentToken: app.globalData.parentToken, payload: { id } });
+        await callApi('taskCRUD', { op: 'delete', payload: { id } });
       } else {
-        await callApi('rewardCRUD', { op: 'delete', parentToken: app.globalData.parentToken, payload: { id } });
+        await callApi('rewardCRUD', { op: 'delete', payload: { id } });
       }
       this.setData({ showConfirm: false, showEditor: false });
-      setTabBarHidden(this, false);
       wx.showToast({ title: '已删除', icon: 'none' });
       await this.load();
     } catch (e) {
       wx.showToast({ title: (e && e.message) || '删除失败', icon: 'none' });
     }
-  }
+  },
 });
