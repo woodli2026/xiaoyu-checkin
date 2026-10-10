@@ -2,10 +2,11 @@
 // 未配置云环境时启用；接口契约与 8 个云函数完全一致，页面层无需感知差异。
 const s = require('../utils/storage');
 const D = require('../utils/domain');
-const T = require('../utils/tasks');
 const P = require('../utils/pets');
 const SEED = require('../utils/seed');
 const CFG = require('../config');
+const Dash = require('../utils/dashboard');
+const F = require('../utils/feed');
 
 const VEGGIES = ['番茄', '黄瓜', '南瓜', '土豆', '玉米', '胡萝卜', '西兰花', '茄子',
   '菠菜', '豌豆', '蘑菇', '青椒', '白菜', '冬瓜', '莲藕', '山药'];
@@ -198,52 +199,15 @@ async function getDashboard({ childId }) {
   const today = D.ymd(new Date());
   const tasks = allTasks().filter(t => t.childId === child._id && !t.deleted)
     .sort((a, b) => a.createdAt - b.createdAt);
-  // 奖励补「该孩子是否已兑换过」：限次奖励（resetAfterRedeem=false）只有一次机会，
-  // 这个标志在界面上取代了原「库存」的角色。
-  const redeemedIds = new Set(
-    allRedemptions().filter(r => r.childId === child._id).map(r => r.rewardId)
-  );
-  const redMap = {};
-  allRedemptions().filter(r => r.childId === child._id).forEach(r => { redMap[r.rewardId] = r._id; });
   const rewards = allRewards().filter(r => r.childId === child._id && !r.deleted)
-    .sort((a, b) => a.createdAt - b.createdAt)
-    .map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id), redeemId: redMap[r._id] || null }));
+    .sort((a, b) => a.createdAt - b.createdAt);
   const checkIns = allCheckIns().filter(c => c.childId === child._id);
-  const doneToday = new Set(checkIns.filter(c => c.date === today).map(c => c.taskId));
+  const redemptions = allRedemptions().filter(r => r.childId === child._id);
 
-  const todayTasks = tasks
-    .filter(t => T.taskVisibleOn(t, today))
-    .map(t => ({
-      taskId: t._id, title: t.title, icon: t.icon, score: t.score,
-      priority: t.priority, type: t.type, checked: doneToday.has(t._id)
-    }));
-
-  const ym = today.slice(0, 7);
-  const monthLit = Array.from(new Set(
-    checkIns.filter(c => c.date.slice(0, 7) === ym).map(c => c.date)
-  )).sort();
-
-  // 连续天数由打卡流水推导（增量计数器在补打卡场景会算错，2026-09-18 修复）
-  const streak = D.displayStreak(new Set(checkIns.map(c => c.date)), today);
-
-  return ok({
-    totalStars: child.totalStars || 0,
-    streak,
-    level: D.levelOf(streak),
-    monthLit,
-    todayTasks,
-    tasks,
-    rewards,
-    checkIns: checkIns.map(c => ({ id: c._id, taskId: c.taskId, date: c.date })),
-    child: {
-      _id: child._id, name: child.name, avatar: child.avatar, photo: child.photo || '',
-      gender: child.gender || '', birthday: child.birthday || '', allergens: child.allergens || ''
-    },
-    children: children.map(c => ({
-      _id: c._id, name: c.name, avatar: c.avatar, photo: c.photo || '',
-      gender: c.gender || '', birthday: c.birthday || '', allergens: c.allergens || ''
-    }))
-  });
+  // 纯视图聚合（与云端 buildDashboard 双份镜像，aggregate-guard 守卫）
+  return ok(Dash.buildDashboard({
+    today, children, child, tasks, rewards, redemptions, checkIns
+  }));
 }
 
 // ============ 写操作 ============
@@ -550,60 +514,22 @@ async function childSwitch({ childId, parentToken }) {
 //   ② 反向流水（refType=checkin_undo / redeem_undo）只作审计，不在动态列表展示；
 //   ③ 撤销打卡后连续天数/星级由 displayStreak 重算；
 //   ④ 取消兑换会删除 redemptions 记录 → 限次奖励自动恢复可兑。
-const FEED_DEFAULT_LIMIT = 30;
-const FEED_MAX_LIMIT = 100;
-
 async function feedCRUD({ op, limit, skip, id, parentToken }) {
   const user = currentUser();
   if (!user) return fail('AUTH_FAIL', '未登录');
   const children = allChildren().filter(c => c.ownerId === user._id && !c.deleted);
 
   if (op === 'list') {
-    const childMap = {};
-    children.forEach(c => { childMap[c._id] = c; });
-    const taskMap = {};
-    allTasks().forEach(t => { taskMap[t._id] = t; });        // 不过滤 deleted
-    const rewardMap = {};
-    allRewards().forEach(r => { rewardMap[r._id] = r; });
-
-    const items = [];
-    allCheckIns().forEach(ci => {
-      const c = childMap[ci.childId];
-      if (!c) return;
-      const t = taskMap[ci.taskId];
-      const stars = Number(ci.score) || (t ? Number(t.score) : 0) || 0;
-      items.push({
-        id: ci._id, kind: 'checkin',
-        childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
-        refId: ci.taskId, title: t ? t.title : '（任务已删除）', icon: t ? t.icon : '❔',
-        stars, delta: stars,
-        date: ci.date || null, createdAt: ci.createdAt || 0, deleted: !!(t && t.deleted),
-        taskType: t ? (t.type || '') : '', repeat: t && t.repeat ? t.repeat : null,
-        priority: t ? (t.priority || 'none') : 'none'
-      });
-    });
-    allRedemptions().forEach(rd => {
-      const c = childMap[rd.childId];
-      if (!c) return;
-      const r = rewardMap[rd.rewardId];
-      const cost = Number(rd.cost) || (r ? Number(r.cost) : 0) || 0;
-      items.push({
-        id: rd._id, kind: 'redeem',
-        childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
-        refId: rd.rewardId, title: r ? r.title : '（奖励已删除）', icon: r ? r.icon : '❔',
-        stars: cost, delta: -cost,
-        date: null, createdAt: rd.createdAt || 0, deleted: !!(r && r.deleted),
-        category: r ? (r.category || 'reward') : 'reward',
-        resetAfterRedeem: r ? !!r.resetAfterRedeem : true
-      });
-    });
-
-    items.sort((a, b) => b.createdAt - a.createdAt);
-    const total = items.length;
-    const lim = Math.min(Math.max(Number(limit) || FEED_DEFAULT_LIMIT, 1), FEED_MAX_LIMIT);
-    const sk = Math.max(Number(skip) || 0, 0);
-    const page = items.slice(sk, sk + lim);
-    return ok({ items: page, hasMore: sk + page.length < total, total });
+    // 纯数据聚合（与云端 buildFeed 双份镜像，aggregate-guard 守卫）
+    // 任务/奖励故意不过滤 deleted：历史动态要能显示已删条目的名字与图标
+    return ok(F.buildFeed({
+      children,
+      tasks: allTasks(),
+      rewards: allRewards(),
+      checkIns: allCheckIns(),
+      redemptions: allRedemptions(),
+      limit, skip
+    }));
   }
 
   if (op === 'undoCheckIn') {

@@ -14,7 +14,9 @@
 // 3) 撤销打卡后连续天数/星级由打卡流水推导（lib/streak.displayStreak），自动重算。
 // 4) 取消兑换会删除 redemptions 记录 → 限次奖励（resetAfterRedeem=false）自动恢复可兑。
 const { cloud, db, _, ok, fail, getUserByOpenid } = require('./lib/cloud');
+const { resolveCaller } = require('./lib/runtime');
 const { verifyToken } = require('./lib/token');
+const { buildFeed } = require('./lib/feed');
 const { displayStreak } = require('./lib/streak');
 const { levelOf } = require('./lib/level');
 const { ymd } = require('./lib/util');
@@ -40,8 +42,6 @@ async function listFeed(user, event) {
   const children = childrenRes.data.filter(c => !c.deleted);
   if (!children.length) return ok({ items: [], hasMore: false, total: 0 });
 
-  const childMap = {};
-  children.forEach(c => { childMap[c._id] = c; });
   const childIds = children.map(c => c._id);
 
   // 按 childId 聚合（老记录可能没有 ownerId）；任务/奖励不过滤 deleted
@@ -52,49 +52,15 @@ async function listFeed(user, event) {
     db.collection('redemptions').where({ childId: _.in(childIds) }).orderBy('createdAt', 'desc').limit(SCAN_LIMIT).get()
   ]);
 
-  const taskMap = {};
-  tRes.data.forEach(t => { taskMap[t._id] = t; });
-  const rewardMap = {};
-  rRes.data.forEach(r => { rewardMap[r._id] = r; });
-
-  const items = [];
-  ciRes.data.forEach(ci => {
-    const c = childMap[ci.childId];
-    if (!c) return;
-    const t = taskMap[ci.taskId];
-    const stars = Number(ci.score) || (t ? Number(t.score) : 0) || 0;
-    items.push({
-      id: ci._id, kind: 'checkin',
-      childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
-      refId: ci.taskId, title: t ? t.title : '（任务已删除）', icon: t ? t.icon : '❔',
-      stars, delta: stars,
-      date: ci.date || null, createdAt: ci.createdAt || 0, deleted: !!(t && t.deleted),
-      // 详情用
-      taskType: t ? (t.type || '') : '', repeat: t && t.repeat ? t.repeat : null,
-      priority: t ? (t.priority || 'none') : 'none'
-    });
-  });
-  rdRes.data.forEach(rd => {
-    const c = childMap[rd.childId];
-    if (!c) return;
-    const r = rewardMap[rd.rewardId];
-    const cost = Number(rd.cost) || (r ? Number(r.cost) : 0) || 0;
-    items.push({
-      id: rd._id, kind: 'redeem',
-      childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
-      refId: rd.rewardId, title: r ? r.title : '（奖励已删除）', icon: r ? r.icon : '❔',
-      stars: cost, delta: -cost,
-      date: null, createdAt: rd.createdAt || 0, deleted: !!(r && r.deleted),
-      // 详情用
-      category: r ? (r.category || 'reward') : 'reward',
-      resetAfterRedeem: r ? !!r.resetAfterRedeem : true
-    });
-  });
-
-  items.sort((a, b) => b.createdAt - a.createdAt);
-  const total = items.length;
-  const page = items.slice(skip, skip + limit);
-  return ok({ items: page, hasMore: skip + page.length < total, total });
+  // 纯数据聚合（与本地 buildFeed 双份镜像，aggregate-guard 守卫）
+  return ok(buildFeed({
+    children,
+    tasks: tRes.data,
+    rewards: rRes.data,
+    checkIns: ciRes.data,
+    redemptions: rdRes.data,
+    limit, skip
+  }));
 }
 
 async function undoCheckIn(openid, user, event) {

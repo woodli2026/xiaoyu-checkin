@@ -65,4 +65,59 @@ function groupByDay(items, todayYmd) {
   return groups;
 }
 
-module.exports = { clockText, timeText, dayLabel, deltaText, kindLabel, isBackfill, groupByDay };
+// 动态列表数据聚合（纯函数）。云端镜像：cloudfunctions/lib/feed.js。
+// 仅做「原始记录 → 列表项」的 join/投影 + 排序 + 分页；分组/时间文案见上方 groupByDay。
+// 两端逻辑必须逐字一致（由 aggregate-guard 守卫）。
+const FEED_DEFAULT_LIMIT = 30;
+const FEED_MAX_LIMIT = 100;
+
+function buildFeed(raw) {
+  const { children, tasks, rewards, checkIns, redemptions, limit, skip } = raw;
+  const childMap = {};
+  (children || []).forEach(c => { childMap[c._id] = c; });
+  const taskMap = {};
+  (tasks || []).forEach(t => { taskMap[t._id] = t; });
+  const rewardMap = {};
+  (rewards || []).forEach(r => { rewardMap[r._id] = r; });
+
+  const items = [];
+  (checkIns || []).forEach(ci => {
+    const c = childMap[ci.childId];
+    if (!c) return;
+    const t = taskMap[ci.taskId];
+    const stars = Number(ci.score) || (t ? Number(t.score) : 0) || 0;
+    items.push({
+      id: ci._id, kind: 'checkin',
+      childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
+      refId: ci.taskId, title: t ? t.title : '（任务已删除）', icon: t ? t.icon : '❔',
+      stars, delta: stars,
+      date: ci.date || null, createdAt: ci.createdAt || 0, deleted: !!(t && t.deleted),
+      taskType: t ? (t.type || '') : '', repeat: t && t.repeat ? t.repeat : null,
+      priority: t ? (t.priority || 'none') : 'none'
+    });
+  });
+  (redemptions || []).forEach(rd => {
+    const c = childMap[rd.childId];
+    if (!c) return;
+    const r = rewardMap[rd.rewardId];
+    const cost = Number(rd.cost) || (r ? Number(r.cost) : 0) || 0;
+    items.push({
+      id: rd._id, kind: 'redeem',
+      childId: c._id, childName: c.name, childAvatar: c.avatar, childPhoto: c.photo || '',
+      refId: rd.rewardId, title: r ? r.title : '（奖励已删除）', icon: r ? r.icon : '❔',
+      stars: cost, delta: -cost,
+      date: null, createdAt: rd.createdAt || 0, deleted: !!(r && r.deleted),
+      category: r ? (r.category || 'reward') : 'reward',
+      resetAfterRedeem: r ? !!r.resetAfterRedeem : true
+    });
+  });
+
+  items.sort((a, b) => b.createdAt - a.createdAt);
+  const total = items.length;
+  const lim = Math.min(Math.max(Number(limit) || FEED_DEFAULT_LIMIT, 1), FEED_MAX_LIMIT);
+  const sk = Math.max(Number(skip) || 0, 0);
+  const page = items.slice(sk, sk + lim);
+  return { items: page, hasMore: sk + page.length < total, total };
+}
+
+module.exports = { clockText, timeText, dayLabel, deltaText, kindLabel, isBackfill, groupByDay, buildFeed, FEED_DEFAULT_LIMIT, FEED_MAX_LIMIT };

@@ -57,7 +57,7 @@ miniprogram/            小程序前端
   custom-tab-bar/       自定义底部导航（原生 tabBar 字号不可调，故自定义）
 
 cloudfunctions/         云函数（部署单元）
-  lib/                  共享纯逻辑（唯一手写来源）+ cloud.js（含 wx-server-sdk 助手）+ runtime.js（授权/上下文深模块，收敛 13 函数重复的 OPENID/用户/令牌/归属校验，由 setup.js sync 分发）
+  lib/                  共享纯逻辑（唯一手写来源）+ cloud.js（含 wx-server-sdk 助手）+ runtime.js（授权/上下文深模块，收敛 13 函数重复的 OPENID/用户/令牌/归属校验）+ dashboard.js / feed.js（看板与动态的业务聚合纯函数，收敛云端/本地双份手写组装），均由 setup.js sync 分发
   setup.js              生成各函数 package.json 并把 lib 复制进每个函数目录
   <name>/index.js       各云函数入口（自包含：自带 lib/ 副本）
   <name>/lib/           ⚠️ 构建产物，由 setup.js 生成，勿手改
@@ -271,15 +271,16 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 | D10 | **`resetAll` 只在本地** | `services/local.js` 导出演示用 `resetAll`，无云端对应 | 保持现状即可（否则云上会「一键删数据」）；如需云端重置请加二次确认 + 令牌 |
 | D11 | ~~令牌传递散布 5 页~~ | ~~4 处手写 globalData 三行赋值 + ~21 处 parentToken 传参~~ | **已销债**（2026-10-08，ADR-0001 + `utils/parent-session.js`）：页面零令牌感知，守卫测试防回归 |
 | D12 | **云端 13 函数授权/上下文重复** | 13 个 index.js 各自内联手写 OPENID 解析/用户解析/令牌校验/归属校验，字面同源无单源（候选 A 之前「人工对齐」漂移高发区） | **已缓解（2026-10-10 候选 A）**：收敛到 `cloudfunctions/lib/runtime.js` 三原语（resolveCaller/assertToken/ownedChild，单源 + `npm run sync` 分发 + `__tests__/runtime-guard.test.js` 守卫）；特例 setPin 条件令牌 / login 自建号 / unlockParent 签发令牌 / feedCRUD 子函数令牌保留手写。本地 `services/local.js` 未动（D3 仍待 V1.1 拆分） |
+| D13 | **看板/动态业务聚合双份手写** | 看板(`getDashboard`) 与 动态(`feedCRUD list`) 的「原始记录→视图模型」组装在云端 index.js 与本地 `services/local.js` 各手写一遍，**无守卫**（只改一端测试全绿却线上漂移） | **已缓解（2026-10-10 候选 E）**：抽为纯函数 `cloudfunctions/lib/dashboard.js`(buildDashboard) 与 `lib/feed.js`(buildFeed)，本地镜像 `miniprogram/utils/dashboard.js` 与 `utils/feed.js#buildFeed`；数据获取仍留各端、纯组装下沉单源。守卫 `__tests__/aggregate-guard.test.js`（双端纯函数对称 + feedCRUD list 端到端一致 + runtime 原语漏 require 静态扫描）。**该守卫当场抓到 `feedCRUD/index.js` 在 A 改造后漏 `require('./lib/runtime')` 的真实 bug（云端从未实跑故潜伏），已修** |
 
 ---
 
 ## 9. 常用命令与工作流
 
 ```bash
-npm test          # 14 个测试文件（node:test，无依赖）—— 105 个用例（含 mirror-guard/pin-reauth/pin-behavior/lint/secret-guard 五守卫）
-npm run check     # 全量语法解析（miniprogram/cloudfunctions/__tests__/tools，227 文件）
-npm run lint      # 静态检查 68 个手写文件：require 路径可解析 / 禁 debugger / miniprogram 内禁 console.log（已接入 npm test）
+npm test          # 20 个测试文件（node:test，无依赖）—— 135 个用例（含 mirror-guard/view-shape-guard/child-rules-guard/runtime-guard/aggregate-guard/lint/secret-guard 等守卫）
+npm run check     # 全量语法解析（miniprogram/cloudfunctions/__tests__/tools，275 文件）
+npm run lint      # 静态检查 78 个手写文件：require 路径可解析 / 禁 debugger / miniprogram 内禁 console.log（已接入 npm test）
 npm run sync      # ⚠️ 改过 cloudfunctions/lib/ 后必跑：重建 package.json + 复制 lib 到 13 个函数
 npm run verify:lib # 校验 lib 源与 13 目录副本逐字节一致（防忘 sync 漂移；已接入 npm test 守卫）
 npm run acceptance      # tools/acceptance.js —— 数据层接口验收
