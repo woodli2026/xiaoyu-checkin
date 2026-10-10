@@ -1,17 +1,19 @@
 // cloudfunctions/rewardCRUD —— 奖励 建/改/删（软删；软删不回退星星）
 const { cloud, db, ok, fail, getOwnedChild } = require('./lib/cloud');
-const { verifyToken } = require('./lib/token');
+const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!OPENID) return fail('AUTH_FAIL', '缺少 openid');
-  if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { OPENID } = r;
+  const tf = assertToken(event, OPENID);
+  if (tf) return tf;
 
   const p = event.payload || {};
   const coll = db.collection('rewards');
 
   if (event.op === 'create') {
-    const child = await getOwnedChild(OPENID, p.childId);
+    const child = await ownedChild(OPENID, p.childId);
     if (!child) return fail('FORBIDDEN', '无权访问该孩子档案');
     if (!p.title || !String(p.title).trim()) return fail('INVALID', '请填写标题');
     if (!(Number(p.cost) >= 1)) return fail('INVALID', '星星数至少为 1');
@@ -32,7 +34,7 @@ exports.main = async (event) => {
     const doc = await coll.doc(p.id).get().catch(() => null);
     const reward = doc && doc.data;
     if (!reward) return fail('NOT_FOUND', '奖励不存在');
-    const child = await getOwnedChild(OPENID, reward.childId);
+    const child = await ownedChild(OPENID, reward.childId);
     if (!child) return fail('FORBIDDEN', '无权操作');
     const patch = {};
     if (p.title != null) {
@@ -55,7 +57,7 @@ exports.main = async (event) => {
     const doc = await coll.doc(p.id).get().catch(() => null);
     const reward = doc && doc.data;
     if (!reward) return fail('NOT_FOUND', '奖励不存在');
-    const child = await getOwnedChild(OPENID, reward.childId);
+    const child = await ownedChild(OPENID, reward.childId);
     if (!child) return fail('FORBIDDEN', '无权操作');
     await coll.doc(p.id).update({ data: { deleted: true } });
     return ok({ id: p.id });

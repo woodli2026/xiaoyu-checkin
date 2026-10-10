@@ -157,10 +157,9 @@ async function undoRedeem(openid, user, event) {
 }
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!OPENID) return fail('AUTH_FAIL', '缺少 openid');
-  const user = await getUserByOpenid(OPENID);
-  if (!user) return fail('AUTH_FAIL', '未登录');
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { OPENID, user } = r;
 
   if (event.op === 'list') return listFeed(user, event);
   if (event.op === 'undoCheckIn') return undoCheckIn(OPENID, user, event);

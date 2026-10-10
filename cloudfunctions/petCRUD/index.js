@@ -13,9 +13,9 @@
 //   ① stage 由 growthValue 派生，不入库（防漂移）；
 //   ② mood 按真实时间衰减：读取前 applyMoodDecay 重算，仅在互动（写）时落库；
 //   ③ 投喂消耗星星 → 需家长令牌 + 一条 refType='pet_feed' 的积分流水。
-const { cloud, db, ok, fail, getUserByOpenid } = require('./lib/cloud');
-const { verifyToken } = require('./lib/token');
+const { cloud, db, ok, fail } = require('./lib/cloud');
 const { ymd } = require('./lib/util');
+const { resolveCaller, assertToken } = require('./lib/runtime');
 const P = require('./lib/pets');
 
 function petView(pet, today) {
@@ -43,11 +43,9 @@ function petView(pet, today) {
 }
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!OPENID) return fail('AUTH_FAIL', '缺少 openid');
-
-  const user = await getUserByOpenid(OPENID);
-  if (!user) return fail('AUTH_FAIL', '未登录');
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { OPENID, user } = r;
 
   const today = ymd(new Date());
   const pets = db.collection('pets');
@@ -71,7 +69,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'adopt') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     if (await findPet()) return fail('ALREADY_HAS_PET', '该宝宝已经有一只宠物啦');
     // 品种即花色（2026-09 升级）：入参为物种组（'cat'|'dog'），品种在物种内随机 5 选 1 后入库
     const group = String(p.species || 'cat');
@@ -97,7 +96,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'feed') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const pet = await findPet();
     if (!pet) return fail('PET_NOT_FOUND', '还没有宠物');
     // 每日投喂上限：当日有效投喂达 PET_FEED_DAILY_LIMIT 次即拒绝（不扣星、不加成长值、不写流水）
@@ -145,7 +145,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'rename') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const pet = await findPet();
     if (!pet) return fail('PET_NOT_FOUND', '还没有宠物');
     const v = String(p.name == null ? '' : p.name).trim();
@@ -155,7 +156,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'reset') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const pet = await findPet();
     if (!pet) return fail('PET_NOT_FOUND', '还没有宠物');
     const now = Date.now();
@@ -168,7 +170,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'release') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const pet = await findPet();
     if (!pet) return fail('PET_NOT_FOUND', '还没有宠物');
     // 软删：成长历史保留，可重新领养一只新的

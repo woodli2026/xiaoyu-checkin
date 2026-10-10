@@ -1,11 +1,14 @@
 // cloudfunctions/childSwitch —— 家长模式切换当前孩子（校验归属）
-const { cloud, ok, fail, getOwnedChild } = require('./lib/cloud');
-const { verifyToken } = require('./lib/token');
+const { cloud, ok, fail } = require('./lib/cloud');
+const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
-  const child = await getOwnedChild(OPENID, event.childId);
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { OPENID } = r;
+  const tf = assertToken(event, OPENID);
+  if (tf) return tf;
+  const child = await ownedChild(OPENID, event.childId);
   if (!child || child._id !== event.childId || child.deleted) return fail('FORBIDDEN', '无权访问该宝宝档案');
   return ok({ childId: child._id });
 };

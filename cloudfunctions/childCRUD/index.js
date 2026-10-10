@@ -11,8 +11,8 @@
 //   op=create —— 写，须持有效 parentToken；每账号上限 6 个宝宝
 //   op=update —— 写，须持有效 parentToken
 //   op=delete —— 写，软删（deleted:true，保留任务/打卡等历史数据）；至少保留一个宝宝
-const { cloud, db, ok, fail, getUserByOpenid } = require('./lib/cloud');
-const { verifyToken } = require('./lib/token');
+const { cloud, db, ok, fail } = require('./lib/cloud');
+const { resolveCaller, assertToken } = require('./lib/runtime');
 
 const NAME_MAX = 12;
 const ALLERGENS_MAX = 50;
@@ -60,11 +60,9 @@ function childView(c) {
 }
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!OPENID) return fail('AUTH_FAIL', '缺少 openid');
-
-  const user = await getUserByOpenid(OPENID);
-  if (!user) return fail('AUTH_FAIL', '未登录');
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { OPENID, user } = r;
 
   const children = db.collection('children');
 
@@ -75,7 +73,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'create') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const mine = (await children.where({ ownerId: user._id }).limit(50).get()).data.filter(c => !c.deleted);
     if (mine.length >= MAX_CHILDREN) return fail('LIMIT', '最多添加 ' + MAX_CHILDREN + ' 个宝宝');
 
@@ -98,7 +97,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'update') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const child = (await children.doc(event.childId).get().catch(() => null));
     if (!child || !child.data || child.data.ownerId !== user._id) return fail('FORBIDDEN', '无权访问该宝宝档案');
     if (child.data.deleted) return fail('NOT_FOUND', '该宝宝已删除');
@@ -131,7 +131,8 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'delete') {
-    if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+    const tf = assertToken(event, OPENID);
+    if (tf) return tf;
     const child = (await children.doc(event.childId).get().catch(() => null));
     if (!child || !child.data || child.data.ownerId !== user._id) return fail('FORBIDDEN', '无权访问该宝宝档案');
     if (child.data.deleted) return fail('NOT_FOUND', '该宝宝已删除');

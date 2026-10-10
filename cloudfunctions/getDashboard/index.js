@@ -1,15 +1,15 @@
 // cloudfunctions/getDashboard —— 孩子看板聚合（星星/连续天数/星级/当月点亮/今日任务/奖励目录/孩子列表）
-const { cloud, db, ok, fail, getUserByOpenid } = require('./lib/cloud');
+const { cloud, db, ok, fail } = require('./lib/cloud');
 const { ymd } = require('./lib/util');
 const { levelOf } = require('./lib/level');
 const { displayStreak } = require('./lib/streak');
 const { taskVisibleOn } = require('./lib/visibility');
+const { resolveCaller } = require('./lib/runtime');
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!OPENID) return fail('AUTH_FAIL', '缺少 openid');
-  const user = await getUserByOpenid(OPENID);
-  if (!user) return fail('AUTH_FAIL', '未登录');
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { user } = r;
 
   const childrenRes = await db.collection('children')
     .where({ ownerId: user._id }).orderBy('createdAt', 'asc').limit(50).get();
@@ -35,7 +35,7 @@ exports.main = async (event) => {
   const redeemedIds = new Set((redRes.data || []).map(r => r.rewardId));
   const redMap = {};
   (redRes.data || []).forEach(r => { redMap[r.rewardId] = r._id; });
-  const rewards = rewardsRes.data.map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id), redeemId: redMap[r.rewardId] || null }));
+  const rewards = rewardsRes.data.map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id), redeemId: redMap[r._id] || null }));
 
   const doneToday = new Set(checkIns.filter(c => c.date === today).map(c => c.taskId));
   const todayTasks = tasks

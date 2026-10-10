@@ -1,9 +1,9 @@
 // cloudfunctions/redeem —— 兑换（即发放）：星星足够 → 扣星星 + 写流水（事务原子）
 // 口径（2026-09-17 调整）：**不再有库存**。限次改由「是否已兑换过」承担：
 //   resetAfterRedeem=true  → 可反复兑换；false → 每位孩子仅一次
-const { cloud, db, ok, fail, getOwnedChild } = require('./lib/cloud');
-const { verifyToken } = require('./lib/token');
+const { cloud, db, ok, fail } = require('./lib/cloud');
 const { applyRedeem, redeemBlockReason } = require('./lib/redeemCore');
+const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
 
 const BLOCK_MSG = {
   REWARD_NOT_FOUND: '奖励不存在或已删除',
@@ -13,11 +13,13 @@ const BLOCK_MSG = {
 };
 
 exports.main = async (event) => {
-  const { OPENID } = cloud.getWXContext();
-  if (!OPENID) return fail('AUTH_FAIL', '缺少 openid');
-  if (!verifyToken(event.parentToken, OPENID)) return fail('TOKEN_INVALID', '家长模式已失效，请重新解锁');
+  const r = await resolveCaller(event);
+  if (r.fail) return r.fail;
+  const { OPENID } = r;
+  const tf = assertToken(event, OPENID);
+  if (tf) return tf;
 
-  const child = await getOwnedChild(OPENID, event.childId);
+  const child = await ownedChild(OPENID, event.childId);
   if (!child) return fail('CHILD_NOT_FOUND', '孩子档案不存在');
 
   const rDoc = await db.collection('rewards').doc(event.rewardId).get().catch(() => null);

@@ -57,7 +57,7 @@ miniprogram/            小程序前端
   custom-tab-bar/       自定义底部导航（原生 tabBar 字号不可调，故自定义）
 
 cloudfunctions/         云函数（部署单元）
-  lib/                  共享纯逻辑（唯一手写来源）+ cloud.js（含 wx-server-sdk 的助手）
+  lib/                  共享纯逻辑（唯一手写来源）+ cloud.js（含 wx-server-sdk 助手）+ runtime.js（授权/上下文深模块，收敛 13 函数重复的 OPENID/用户/令牌/归属校验，由 setup.js sync 分发）
   setup.js              生成各函数 package.json 并把 lib 复制进每个函数目录
   <name>/index.js       各云函数入口（自包含：自带 lib/ 副本）
   <name>/lib/           ⚠️ 构建产物，由 setup.js 生成，勿手改
@@ -270,6 +270,7 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 | D9 | **命名不一致** | 本地 `xy_checkIns` vs 云端集合 `checkIns`；历史 `xiaoyu` 前缀 | 属刻意保留，不建议改；如需统一，走一次性迁移脚本 + 幂等守卫 |
 | D10 | **`resetAll` 只在本地** | `services/local.js` 导出演示用 `resetAll`，无云端对应 | 保持现状即可（否则云上会「一键删数据」）；如需云端重置请加二次确认 + 令牌 |
 | D11 | ~~令牌传递散布 5 页~~ | ~~4 处手写 globalData 三行赋值 + ~21 处 parentToken 传参~~ | **已销债**（2026-10-08，ADR-0001 + `utils/parent-session.js`）：页面零令牌感知，守卫测试防回归 |
+| D12 | **云端 13 函数授权/上下文重复** | 13 个 index.js 各自内联手写 OPENID 解析/用户解析/令牌校验/归属校验，字面同源无单源（候选 A 之前「人工对齐」漂移高发区） | **已缓解（2026-10-10 候选 A）**：收敛到 `cloudfunctions/lib/runtime.js` 三原语（resolveCaller/assertToken/ownedChild，单源 + `npm run sync` 分发 + `__tests__/runtime-guard.test.js` 守卫）；特例 setPin 条件令牌 / login 自建号 / unlockParent 签发令牌 / feedCRUD 子函数令牌保留手写。本地 `services/local.js` 未动（D3 仍待 V1.1 拆分） |
 
 ---
 
