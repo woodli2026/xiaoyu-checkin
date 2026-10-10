@@ -1,9 +1,10 @@
-// utils/seed.js —— 新账号「开箱预置数据」（8 个任务 + 8 个奖励）· 本地兜底镜像
+// utils/seed.js —— 开箱预置数据（8 任务 + 8 奖励）· 自动生成的镜像，请勿手改！
 //
-// 本文件是 cloudfunctions/lib/seed.js 的前端镜像，两份必须保持等价：
-// __tests__/seed.test.js 会对两份实现注入相同入参并做深比较，防止双份漂移。
-// 修改任一份时，请同步另一份并跑 npm test。
+// 唯一源：cloudfunctions/lib/seed.js
+// 生成：npm run gen:mirror      校验：npm run verify:mirror（已接入 npm test）
+// 结构一致性另由 __tests__/seed.test.js 守卫（双份 deepStrictEqual）。
 
+// 每日重复规则（任务每天都需要打卡）
 const DAILY = { enabled: true, type: 'day', interval: 1, weekdays: [] };
 
 // 种子生效日期：固定 2026-01-01（用户指定，不再随建号日变化）
@@ -36,9 +37,9 @@ function rewardDoc(o) {
     childId: o.childId,
     title: o.title,
     icon: o.icon,
-    category: 'reward',
+    category: 'reward',                 // 均为「奖励」类（惩罚类留给家长自建）
     resetAfterRedeem: !!o.resetAfterRedeem,  // true=可反复兑换；false=每位孩子仅一次
-    praise: o.praise || '',                   // 兑换后宠物说的正面反馈
+    praise: o.praise || '',             // 兑换后宠物说的正面反馈
     cost: o.cost,
     createdAt: o.now,
     deleted: false
@@ -46,6 +47,7 @@ function rewardDoc(o) {
 }
 
 // 8 个任务：含风趣幽默的正面反馈（praise），打卡后宠物气泡即展示；星星合计 19
+// 类型覆盖 study/life/sport/growth 四类；图标均在 utils/icons.js 任务候选集内
 function seedTasks(o) {
   const base = { ownerId: o.ownerId, childId: o.childId, date: o.date, now: o.now };
   return [
@@ -61,8 +63,7 @@ function seedTasks(o) {
 }
 
 // 8 个奖励：6 条不限次（即时光/心理奖励）+ 2 条仅一次（攒星大奖），星星 6–60 星梯度定价
-// 顺序由用户指定；图标均在 utils/icons.js 奖励候选集内
-// 8 个奖励：兑换后宠物气泡即展示的正面反馈（praise）
+// 顺序由用户指定；图标均在 utils/icons.js 奖励候选集内；praise=兑换后宠物气泡文案
 function seedRewards(o) {
   const base = { ownerId: o.ownerId, childId: o.childId, now: o.now };
   return [

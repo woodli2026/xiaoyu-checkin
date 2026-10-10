@@ -3,10 +3,14 @@
 // 【设计说明 / 对 PRD 的偏离 #7】
 // PRD 未规定初始任务与奖励（原实现为新账号空列表，需家长手建后才能打卡验收）。
 // 经确认改为：新账号首次建号时预置一组可直接打卡/兑换的数据，做到「导入即验收」。
-// 云端（本文件）与本地兜底（miniprogram/utils/seed.js）必须保持一致 ——
-// __tests__/seed.test.js 对两份实现做结构一致性校验，防止双份实现漂移。
-//
 // 纯函数：不依赖 wx-server-sdk / 数据库 / 时间，仅接收 ownerId / childId / date / now。
+//
+// 【D1 单源试点（2026-10-10）】本文件是 seed 数据的**唯一手写来源**：
+//   · miniprogram/utils/seed.js 由 `npm run gen:mirror` 从下方标记之后的内容生成（勿手改镜像）；
+//   · `npm run verify:mirror` 校验镜像与源一致（__tests__/mirror-sync.test.js 已接入 npm test）；
+//   · 结构语义另由 __tests__/seed.test.js 做双份 deepStrictEqual。
+
+// ==MIRROR-BODY-START==
 
 // 每日重复规则（任务每天都需要打卡）
 const DAILY = { enabled: true, type: 'day', interval: 1, weekdays: [] };

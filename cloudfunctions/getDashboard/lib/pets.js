@@ -169,6 +169,17 @@ function pruneDaily(daily, today, keepDays) {
   return out;
 }
 
+// 今日有效投喂次数（复用 daily 口径）——本地兜底层与云函数共用的唯一来源
+function feedCountToday(pet, today) {
+  return (((pet || {}).daily || {})[today] || {}).feed || 0;
+}
+
+// 今日是否还能投喂（未达每日上限）——消除「本地/云端各自内联 >= 比较」的漂移盲区
+// （与 D13「聚合双份手写」同类的收敛：判定下沉 pets.js 单源，两处调用点只调本函数）
+function canFeed(pet, today) {
+  return feedCountToday(pet, today) < PET_FEED_DAILY_LIMIT;
+}
+
 // 近 7 天（含今天）汇总
 function weekTotals(daily, today) {
   const from = D.addDays(today, -6);
@@ -205,5 +216,5 @@ module.exports = {
   resolveSpeciesKey, randomBreedKey, stageInfo,
   isValidPetName, normalizePetName,
   clampMood, applyMoodDecay, moodAfterFeed, moodAfterStroke,
-  interactionStreak, bumpDaily, pruneDaily, weekTotals, computePetStats
+  interactionStreak, bumpDaily, pruneDaily, feedCountToday, canFeed, weekTotals, computePetStats
 };

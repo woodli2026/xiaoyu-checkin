@@ -186,7 +186,7 @@ test('childCRUD 双端档案校验守卫（串行，避免共享 store 竞态）
 
   // ① 常量口径守卫
   await t.test('① childCRUD 常量口径 本地↔云端 一致（NAME / ALLERGENS / MAX / GENDERS）', () => {
-    const localSrc = read('miniprogram/services/local.js');
+    const localSrc = read('miniprogram/services/local/child.js');
     const cloudSrc = read('cloudfunctions/childCRUD/index.js');
     const pick = (src, name) => {
       const i = src.indexOf('const ' + name + ' ');
@@ -203,7 +203,7 @@ test('childCRUD 双端档案校验守卫（串行，避免共享 store 竞态）
   // ② childView 形状守卫
   await t.test('② childView 输出形状 本地↔云端 一致', () => {
     const sample = { _id: 'c1', ownerId: 'u1', name: '小明', avatar: '🧒', photo: 'p.png', gender: 'boy', birthday: '2018-06-15', allergens: '花生', deleted: false };
-    const localView = evalFn(functionBlock(read('miniprogram/services/local.js'), 'childView'), {})(sample);
+    const localView = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'childView'), {})(sample);
     const cloudView = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'childView'), {})(sample);
     assert.deepEqual(localView, cloudView, '双端 childView 输出不一致');
     assert.deepStrictEqual(keysOf(localView).sort(), CHILD_VIEW_KEYS, 'childView 键集漂移');
@@ -211,7 +211,7 @@ test('childCRUD 双端档案校验守卫（串行，避免共享 store 竞态）
 
   // ③ normalizeBirthday 行为守卫
   await t.test('③ normalizeBirthday 行为 本地↔云端 一致（含真实日期校验）', () => {
-    const localF = evalFn(functionBlock(read('miniprogram/services/local.js'), 'normalizeBirthday'), {});
+    const localF = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'normalizeBirthday'), {});
     const cloudF = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'normalizeBirthday'), {});
     const cases = ['', '2020-01-01', '2020-02-29', '2020-12-31', '2021-02-28', '2020-13-01', '2020-02-30', '2019-02-29', '2020-1-1', '20200101', 'abc'];
     for (const c of cases) {
@@ -224,9 +224,9 @@ test('childCRUD 双端档案校验守卫（串行，避免共享 store 竞态）
     const failStubLocal = (code, message) => ({ code, message: message || code });
     const GENDERS = ['', 'boy', 'girl'];
     const ALLERGENS_MAX = 50;
-    const localNb = evalFn(functionBlock(read('miniprogram/services/local.js'), 'normalizeBirthday'), {});
+    const localNb = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'normalizeBirthday'), {});
     const cloudNb = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'normalizeBirthday'), {});
-    const localExtract = evalFn(functionBlock(read('miniprogram/services/local.js'), 'extractChildProfile'),
+    const localExtract = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'extractChildProfile'),
       { fail: failStubLocal, GENDERS, ALLERGENS_MAX, normalizeBirthday: localNb });
     const cloudExtract = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'extractProfileFields'),
       { fail: failStubLocal, GENDERS, ALLERGENS_MAX, normalizeBirthday: cloudNb });

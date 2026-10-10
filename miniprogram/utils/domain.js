@@ -71,20 +71,14 @@ function verifyToken(token, store, now) {
   return rec.expireAt > (now || Date.now());
 }
 
-// 打卡核心：child { totalStars, streak, lastCheckInDate } + score + date -> 新字段
-// 规则：昨日有打卡则 +1；否则重置为 1；同日不重复计（外部已拦截）
+// 打卡核心：child { totalStars } + score + date -> 新字段
+// 规则：只累加星星；同日不重复计（外部已拦截）。
+// 连续天数**不再落库**：历史 child.streak 增量计数器在补打卡场景会算错，
+// 展示一律由打卡流水重推 displayStreak（见本文件 displayStreak，2026-09-18 修复口径、
+// 2026-10-10 移除该死字段）。与 cloudfunctions/lib/checkInCore.js 同口径（双份镜像）。
 function applyCheckIn(child, score, date) {
   const totalStars = (child.totalStars || 0) + (Number(score) || 0);
-  const last = child.lastCheckInDate;
-  let streak;
-  if (last === date) {
-    streak = child.streak || 1;
-  } else if (last === addDays(date, -1)) {
-    streak = (child.streak || 0) + 1;
-  } else {
-    streak = 1;
-  }
-  return { totalStars, streak, lastCheckInDate: date, level: levelOf(streak) };
+  return { totalStars, lastCheckInDate: date };
 }
 
 // 兑换核心（2026-09-17 调整）：奖励**不再有库存**，限次改由「是否已兑换过」承担。

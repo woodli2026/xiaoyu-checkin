@@ -24,8 +24,8 @@ function petView(pet, today) {
   const breedKey = P.resolveSpeciesKey(pet.species);
   const info = P.stageInfo(pet.growthValue, breedKey);
   const breed = P.speciesOf(breedKey);
-  // 每日投喂上限：今日已喂次数与是否达限（复用 pet.daily[today].feed 口径，与本地兜底层 petView 一致）
-  const todayFeedCount = ((pet.daily || {})[today] || {}).feed || 0;
+  // 每日投喂上限：今日已喂次数与是否达限（口径下沉 pets.js 单源 P.feedCountToday/P.canFeed，与本地兜底层共用）
+  const todayFeedCount = P.feedCountToday(pet, today);
   return {
     _id: pet._id, childId: pet.childId, species: breedKey,
     breedName: breed ? breed.name : '', name: pet.name,
@@ -36,7 +36,7 @@ function petView(pet, today) {
     emoji: info.emoji, speciesEmoji: info.speciesEmoji, nextStageAt: info.nextStageAt,
     mood: P.applyMoodDecay(pet.mood, pet.lastMoodAt, Date.now()), moodMax: P.MOOD_MAX,
     feedCount: Number(pet.feedCount) || 0, strokeCount: Number(pet.strokeCount) || 0,
-    todayFeedCount, feedLimited: todayFeedCount >= P.PET_FEED_DAILY_LIMIT,
+    todayFeedCount, feedLimited: !P.canFeed(pet, today),
     adoptedAt: pet.createdAt || 0,
     stats: P.computePetStats(pet, today)
   };
@@ -100,9 +100,8 @@ exports.main = async (event) => {
     if (tf) return tf;
     const pet = await findPet();
     if (!pet) return fail('PET_NOT_FOUND', '还没有宠物');
-    // 每日投喂上限：当日有效投喂达 PET_FEED_DAILY_LIMIT 次即拒绝（不扣星、不加成长值、不写流水）
-    const todayFeedCount = ((pet.daily || {})[today] || {}).feed || 0;
-    if (todayFeedCount >= P.PET_FEED_DAILY_LIMIT) {
+    // 每日投喂上限：当日有效投喂达上限即拒绝（不扣星、不加成长值、不写流水）；判定走 P.canFeed 单源
+    if (!P.canFeed(pet, today)) {
       return fail('FEED_LIMIT', '今天吃饱啦，明天再喂吧');
     }
     if ((child.totalStars || 0) < P.PET_FEED_COST) return fail('INSUFFICIENT', '星星不够啦');

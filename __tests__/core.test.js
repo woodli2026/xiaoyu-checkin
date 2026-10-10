@@ -194,17 +194,16 @@ test('repeatLabel: 任务副标题的重复描述', () => {
   assert.strictEqual(T.repeatLabel({ repeat: { enabled: true, type: 'week', weekdays: [] } }), '每周');
 });
 
-test('checkInCore: 首登 / 连续 / 隔日重置', () => {
-  const first = lib.applyCheckIn({ totalStars: 0, streak: 0, lastCheckInDate: null }, 2, '2026-09-17');
+test('checkInCore: 只累加星星（连续天数不落库，死字段 child.streak 已移除）', () => {
+  const first = lib.applyCheckIn({ totalStars: 0, lastCheckInDate: null }, 2, '2026-09-17');
   assert.strictEqual(first.totalStars, 2);
-  assert.strictEqual(first.streak, 1);
+  assert.strictEqual(first.lastCheckInDate, '2026-09-17');
+  assert.strictEqual(first.streak, undefined);    // 增量计数器已移除（展示走 displayStreak 重推）
 
-  const consecutive = lib.applyCheckIn({ totalStars: 5, streak: 1, lastCheckInDate: '2026-09-16' }, 3, '2026-09-17');
-  assert.strictEqual(consecutive.totalStars, 8);
-  assert.strictEqual(consecutive.streak, 2);
-
-  const gap = lib.applyCheckIn({ totalStars: 5, streak: 4, lastCheckInDate: '2026-09-10' }, 1, '2026-09-17');
-  assert.strictEqual(gap.streak, 1);
+  // 即便入参仍带历史 streak，也不再回写（证明死字段已断）
+  const more = lib.applyCheckIn({ totalStars: 5, streak: 4, lastCheckInDate: '2026-09-10' }, 3, '2026-09-17');
+  assert.strictEqual(more.totalStars, 8);
+  assert.strictEqual(more.streak, undefined);
 });
 
 test('redeemCore: 只扣星星 / 限次由「是否已兑换过」承担（无库存）', () => {

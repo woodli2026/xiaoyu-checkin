@@ -236,7 +236,7 @@ const cloudTaskSandbox = Object.assign({ child: { _id: 'c1', ownerId: 'u1' }, p:
 const cloudRewardSandbox = Object.assign({ child: { _id: 'c1', ownerId: 'u1' }, p: { childId: 'c1' } }, STR);
 
 test('taskCRUD create 文档形状 本地↔云端 一致', () => {
-  const localSrc = read('miniprogram/services/local.js');
+  const localSrc = read('miniprogram/services/local/task.js');
   const cloudSrc = read('cloudfunctions/taskCRUD/index.js');
   const localDoc = extractCreateDoc(functionBlock(localSrc, 'taskCRUD'), 'const task =', taskSandbox);
   const cloudDoc = extractCreateDoc(arrowBlock(cloudSrc, 'exports.main = async (event) =>'), 'const doc =', cloudTaskSandbox);
@@ -253,7 +253,7 @@ test('taskCRUD create 文档形状 本地↔云端 一致', () => {
 });
 
 test('rewardCRUD create 文档形状 本地↔云端 一致', () => {
-  const localSrc = read('miniprogram/services/local.js');
+  const localSrc = read('miniprogram/services/local/reward.js');
   const cloudSrc = read('cloudfunctions/rewardCRUD/index.js');
   const localDoc = extractCreateDoc(functionBlock(localSrc, 'rewardCRUD'), 'const reward =', rewardSandbox);
   const cloudDoc = extractCreateDoc(arrowBlock(cloudSrc, 'exports.main = async (event) =>'), 'const doc =', cloudRewardSandbox);

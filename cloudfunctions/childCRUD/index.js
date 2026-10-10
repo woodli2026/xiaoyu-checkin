@@ -89,7 +89,7 @@ exports.main = async (event) => {
     const cdoc = Object.assign({
       ownerId: user._id, name, avatar, photo: '',
       gender: '', birthday: '', allergens: '',
-      totalStars: 0, streak: 0, lastCheckInDate: null, createdAt: Date.now(), deleted: false
+      totalStars: 0, lastCheckInDate: null, createdAt: Date.now(), deleted: false
     }, prof.patch);
     if (p.photo != null) cdoc.photo = String(p.photo);
     const add = await children.add({ data: cdoc });

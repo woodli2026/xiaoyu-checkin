@@ -33,7 +33,7 @@ exports.main = async (event) => {
 
   await db.runTransaction(async (t) => {
     await t.collection('children').doc(child._id).update({
-      data: { totalStars: upd.totalStars, streak: upd.streak, lastCheckInDate: upd.lastCheckInDate }
+      data: { totalStars: upd.totalStars, lastCheckInDate: upd.lastCheckInDate }
     });
     await t.collection('checkIns').add({
       data: { ownerId: child.ownerId, childId: child._id, taskId: event.taskId, date, score: task.score, createdAt: now }

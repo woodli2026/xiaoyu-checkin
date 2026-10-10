@@ -53,7 +53,7 @@ function evalObj(span, sandbox) {
 }
 
 test('① REDEEM_BLOCK_MSG(本地兜底) ↔ BLOCK_MSG(云端兑换) 字面量口径一致', () => {
-  const localMsg = evalObj(objectLiteralAfter(read('miniprogram/services/local.js'), 'REDEEM_BLOCK_MSG ='), {});
+  const localMsg = evalObj(objectLiteralAfter(read('miniprogram/services/local/reward.js'), 'REDEEM_BLOCK_MSG ='), {});
   const cloudMsg = evalObj(objectLiteralAfter(read('cloudfunctions/redeem/index.js'), 'BLOCK_MSG ='), {});
   const expected = ['ALREADY_REDEEMED', 'INSUFFICIENT', 'INVALID', 'REWARD_NOT_FOUND'].sort();
   assert.deepStrictEqual(Object.keys(localMsg).sort(), expected, '本地 REDEEM_BLOCK_MSG 键集漂移');
@@ -79,12 +79,14 @@ test('② petView 输出键集 本地 ↔ 云端 一致（视图模型契约）'
       applyMoodDecay: (m) => m,
       MOOD_MAX: 100,
       PET_FEED_DAILY_LIMIT: 3,
+      feedCountToday: () => 0,
+      canFeed: () => true,
       computePetStats: () => ({ a: 1 })
     },
     Number, Date
   };
   // 求值整段 petView 函数并调用，才能拿到真实输出对象（return 字面量引用了函数内局部变量）
-  const localView = evalObj('(' + functionAfter(read('miniprogram/services/local.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
+  const localView = evalObj('(' + functionAfter(read('miniprogram/services/local/pet.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
   const cloudView = evalObj('(' + functionAfter(read('cloudfunctions/petCRUD/index.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
   const expected = [
     '_id', 'adoptedAt', 'breedName', 'childId', 'emoji', 'feedCount', 'feedLimited',

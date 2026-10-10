@@ -261,6 +261,17 @@ test('pets: computePetStats 汇总报表数据源', () => {
   assert.strictEqual(P.computePetStats(null, today), null);
 });
 
+test('pets: canFeed 每日上限判定（<3 可投，≥3 达限；缺 daily 视为 0，stroke 不计）', () => {
+  const today = '2026-09-18';
+  assert.strictEqual(P.feedCountToday({ daily: { '2026-09-18': { feed: 2 } } }, today), 2);
+  assert.strictEqual(P.feedCountToday({}, today), 0);
+  assert.strictEqual(P.feedCountToday(null, today), 0);
+  assert.strictEqual(P.canFeed({ daily: { '2026-09-18': { feed: 2 } } }, today), true);
+  assert.strictEqual(P.canFeed({ daily: { '2026-09-18': { feed: 3 } } }, today), false);
+  assert.strictEqual(P.canFeed({ daily: { '2026-09-18': { stroke: 5 } } }, today), true); // 抚摸不计入投喂上限
+  assert.strictEqual(P.canFeed(null, today), true);
+});
+
 test('pets 双份实现一致：云端 lib 与前端 utils 必须同口径', () => {
   const cloudPets = require('../cloudfunctions/lib/pets');
   // 品种库/组口径/默认品种映射必须逐字段一致（防漂移）
@@ -300,6 +311,12 @@ test('pets 双份实现一致：云端 lib 与前端 utils 必须同口径', () 
     cloudPets.computePetStats({ growthValue: 40, feedCount: 1, strokeCount: 2, daily }, today),
     P.computePetStats({ growthValue: 40, feedCount: 1, strokeCount: 2, daily }, today)
   );
+  // 投喂上限判定（C 收敛）：本地与云端必须为同一纯函数，逐值一致
+  [{ daily: {} }, { daily: { '2026-09-18': { feed: 0 } } }, { daily: { '2026-09-18': { feed: 2 } } }, { daily: { '2026-09-18': { feed: 3 } } }]
+    .forEach((p, i) => {
+      assert.strictEqual(cloudPets.feedCountToday(p, today), P.feedCountToday(p, today), 'feedCountToday 漂移 @' + i);
+      assert.strictEqual(cloudPets.canFeed(p, today), P.canFeed(p, today), 'canFeed 漂移 @' + i);
+    });
 });
 
 // ============================================================
@@ -968,7 +985,7 @@ test('宠物页：投喂每日上限口径齐备（FEED_LIMIT 双端 / petView �
   const root = path.join(__dirname, '..');
   const js = fs.readFileSync(path.join(root, 'miniprogram', 'pages', 'pet', 'pet.js'), 'utf8');
   const wxml = fs.readFileSync(path.join(root, 'miniprogram', 'pages', 'pet', 'pet.wxml'), 'utf8');
-  const localSrc = fs.readFileSync(path.join(root, 'miniprogram', 'services', 'local.js'), 'utf8');
+  const localSrc = fs.readFileSync(path.join(root, 'miniprogram', 'services', 'local', 'pet.js'), 'utf8');
   const cloudSrc = fs.readFileSync(path.join(root, 'cloudfunctions', 'petCRUD', 'index.js'), 'utf8');
   const localPets = fs.readFileSync(path.join(root, 'miniprogram', 'utils', 'pets.js'), 'utf8');
   const cloudPets = fs.readFileSync(path.join(root, 'cloudfunctions', 'lib', 'pets.js'), 'utf8');
@@ -984,11 +1001,13 @@ test('宠物页：投喂每日上限口径齐备（FEED_LIMIT 双端 / petView �
   [localSrc, cloudSrc].forEach((src, i) => {
     const tag = i === 0 ? '本地兜底层' : '云函数';
     assert.ok(src.indexOf("'FEED_LIMIT', '今天吃饱啦，明天再喂吧'") >= 0, tag + ' 缺少 FEED_LIMIT 拒绝');
-    assert.ok(/todayFeedCount >= P\.PET_FEED_DAILY_LIMIT/.test(src), tag + ' 达限判断缺失');
+    // C 收敛：达限判定改走 pets.js 单源 P.canFeed，禁止再内联 >= 比较（防本地/云端双份手写漂移）
+    assert.ok(/!P\.canFeed\(pet, today\)/.test(src), tag + ' 达限判断应走 P.canFeed 单源');
+    assert.ok(!/todayFeedCount >= P\.PET_FEED_DAILY_LIMIT/.test(src), tag + ' 不应再内联达限比较（应走 P.canFeed）');
     const fl = src.indexOf('FEED_LIMIT');
     const cost = src.indexOf('PET_FEED_COST)');
     assert.ok(fl > 0 && cost > fl, tag + ' FEED_LIMIT 检查应先于扣星（达限不扣星）');
-    assert.ok(/todayFeedCount, feedLimited: todayFeedCount >= P\.PET_FEED_DAILY_LIMIT/.test(src),
+    assert.ok(/todayFeedCount, feedLimited: !P\.canFeed\(pet, today\)/.test(src),
       tag + ' petView 未透出 todayFeedCount/feedLimited');
   });
 
