@@ -1,10 +1,9 @@
 const { callApi } = require('../../utils/api');
 const P = require('../../utils/pets');
+const { pagePetData } = require('../../utils/pet-page');
+const CF = require('../../utils/confetti');
 const { attachTabBarSync } = require('../../utils/tabbar');
 const session = require('../../utils/parent-session');
-function petClsOf(pet) {
-  return 's' + (pet ? pet.stage : 1);
-}
 const ANIM_MS = { stroke: 1600, feed: 1800 };
 Page({
   behaviors: [require('../../behaviors/pin-reauth')],
@@ -85,40 +84,7 @@ Page({
     }
   },
   apply(totalStars, pet) {
-    const stats = (pet && pet.stats) || {};
-    const week = stats.week || { feed: 0, stroke: 0 };
-    const max = Math.max(week.feed, week.stroke, 1);
-      const breedKey = pet ? P.resolveSpeciesKey(pet.species) : '';
-      const breed = breedKey ? P.speciesOf(breedKey) : null;
-      const form = pet && pet.stage >= 2 ? 'adult' : 'baby';
-      const baseSrc = breed ? '/images/pets/' + breedKey + '_' + form : '';
-      this.setData({
-        totalStars,
-        pet,
-        petCls: petClsOf(pet),
-        petImg: breed ? (pet.stage >= 2 ? breed.imgAdult : breed.imgBaby) : '',
-        petSrc: breed ? baseSrc + '.png' : '',
-        petSrcHappy: breed ? baseSrc + '_happy.png' : '',
-        petSrcEat: breed ? baseSrc + '_eat.png' : '',
-        breedName: pet ? ((pet.breedName || (breed ? breed.name : ''))) : '',
-        canFeed: totalStars >= P.PET_FEED_COST,
-        feedLimited: !!(pet && pet.feedLimited),
-        todayFeedCount: pet ? (Number(pet.todayFeedCount) || 0) : 0,
-      growthPct: Math.round(pet ? pet.stagePct : 0),
-      moodPct: Math.round(pet ? pet.mood : 0),
-      growthTxt: pet
-        ? (pet.stageNeed ? pet.stageHave + '/' + pet.stageNeed : 'MAX')
-        : '0/' + (P.STAGES[1].min - P.STAGES[0].min),
-      moodTxt: pet ? String(pet.mood) : '0',
-      streakDays: stats.streakDays || 0,
-      feedTotal: stats.feedTotal || 0,
-      strokeTotal: stats.strokeTotal || 0,
-      growthValue: stats.growthValue || 0,
-      weekFeed: week.feed,
-      weekStroke: week.stroke,
-      weekFeedPct: Math.round(week.feed / max * 100),
-      weekStrokePct: Math.round(week.stroke / max * 100)
-    });
+    this.setData(pagePetData(totalStars, pet));
   },
   async feed() {
     const app = getApp();
@@ -293,8 +259,8 @@ Page({
     this._animAt = now;
     const n = this.data.animN + 1;
     const phase = n % 2 ? 'b' : 'a';
-    const fx = type === 'stroke' ? this.makeFx('heart', n, 3)
-      : type === 'feed' ? this.makeFx('star', n, 3) : [];
+    const fx = type === 'stroke' ? CF.fxParticles('heart', n, 3)
+      : type === 'feed' ? CF.fxParticles('star', n, 3) : [];
     const petSrc = type === 'stroke' ? this.data.petSrcHappy
       : type === 'feed' ? this.data.petSrcEat : this.data.petImg;
     const floatText = type === 'feed' ? '+' + P.PET_GROWTH_PER_FEED + ' 经验'
@@ -305,29 +271,8 @@ Page({
       this.setData({ animType: '', animPhase: '', petSrc: this.data.petImg, floatText: '' });
     }, ANIM_MS[type] || 1600);
   },
-  makeFx(kind, attempt, count) {
-    const arr = [];
-    for (let i = 0; i < count; i++) {
-      arr.push({
-        id: attempt + '-' + i,
-        kind,
-        left: 15 + Math.round(Math.random() * 70),
-        top: Math.round(Math.random() * 30) - 25,
-        delay: (i * 0.15).toFixed(2)
-      });
-    }
-    return arr;
-  },
   burst() {
-    const colors = ['#FFC93C', '#FF9AA2', '#7Fd3ff', '#C8F5DD', '#DDD0FF'];
-    const pieces = [];
-    for (let i = 0; i < 26; i++) {
-      pieces.push({
-        id: i, left: Math.round(Math.random() * 100),
-        color: colors[i % colors.length], delay: (Math.random() * 0.3).toFixed(2)
-      });
-    }
-    this.setData({ confetti: pieces });
+    this.setData({ confetti: CF.risePieces() });
     setTimeout(() => this.setData({ confetti: [] }), 1600);
   }
 });

@@ -86,7 +86,8 @@ test('privacy: home 首启弹层已迁移为公共组件（旧结构零残留，
 
 test('privacy: mine 选图就地授权（getPrivacySetting 预检 → 弹组件 → 同意后原地继续）', () => {
   const wxml = read('miniprogram/pages/mine/mine.wxml');
-  const js = read('miniprogram/pages/mine/mine.js');
+  // 选图流程已抽 behaviors/child-photo.js（D4）：合并两文件做隐私闸门口径校验
+  const js = read('miniprogram/pages/mine/mine.js') + read('miniprogram/behaviors/child-photo.js');
   const json = JSON.parse(read('miniprogram/pages/mine/mine.json'));
 
   assert.strictEqual(json.usingComponents['privacy-sheet'], '/components/privacy-sheet/privacy-sheet',

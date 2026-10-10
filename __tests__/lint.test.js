@@ -49,6 +49,17 @@ test('R3 只在 miniprogram 内禁 console.log，且放行 console.info', () => 
   assert.strictEqual(lint.ruleConsole(inTools, "console.log('x')").length, 0, 'tools 属命令行输出，不限');
 });
 
+test('行内豁免 // lint-ignore 放行「字符串里描述代码」的行（生成器场景）', () => {
+  const file = path.join(ROOT, 'miniprogram', 'x.js');
+  const raw = "const tpl = \"require('./does-not-exist')\";   // lint-ignore\n";
+  assert.deepStrictEqual(lint.lintSource(file, raw), [], '带豁免注释的行不应报错');
+  // 反向：去掉豁免注释后同一行必须命中（防豁免机制把规则废掉）
+  const raw2 = "const tpl = \"require('./does-not-exist')\";\n";
+  assert.strictEqual(lint.lintSource(file, raw2).length, 1, '无豁免注释时必须命中坏 require');
+  assert.deepStrictEqual([...lint.ignoreLines(raw)], [1]);
+  assert.deepStrictEqual([...lint.ignoreLines(raw2)], []);
+});
+
 test('生成副本 cloudfunctions/<fn>/lib/ 不参与 lint（由 verify:lib 负责）', () => {
   assert.strictEqual(lint.isGeneratedCopy('cloudfunctions/login/lib/token.js'), true);
   assert.strictEqual(lint.isGeneratedCopy('cloudfunctions/lib/token.js'), false, 'canonical 源必须被检查');

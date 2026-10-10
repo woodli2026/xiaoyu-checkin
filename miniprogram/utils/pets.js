@@ -1,12 +1,15 @@
-// utils/pets.js —— 宠物模块纯逻辑（无 wx / 无 IO）
-// 前端兜底层 services/local.js 与云函数 cloudfunctions/lib 共用同一份，防漂移（守卫测试比对）
+// utils/pets.js —— 宠物模块纯逻辑（无 wx / 无 IO）· 自动生成的镜像，请勿手改！
+//
+// 唯一源：cloudfunctions/lib/pets.js
+// 生成：npm run gen:mirror      校验：npm run verify:mirror（已接入 npm test）
 // 覆盖：物种 / 五阶段 / 命名校验 / 心情衰减 / 互动连续天数 / 互动统计
+// 行为一致性另由 __tests__/pet.test.js 的「双份实现一致」用例守卫。
 
 const D = require('./domain');
 
 // 品种即花色（2026-09 升级）：领养时选物种（cat/dog），品种在物种内随机 5 选 1 入库。
 // SPECIES 为 10 个品种 key（5 猫 / 5 狗）；emoji 保留作兜底渲染与老弹层文案。
-// imgBaby/imgAdult 为两档形态图（幼崽/成年，PNG-8 透明底）；云端版 cloudfunctions/lib/pets.js 逐字段同步（守卫测试比对）。
+// imgBaby/imgAdult 为两档形态图路径（云函数用不到，仅为与前端 utils/pets.js 逐字段一致，防漂移守卫比对）。
 const SPECIES = [
   { key: 'cat_lihua',    species: 'cat', name: '狸花猫',   emoji: '🐱', imgBaby: '/images/pets/cat_lihua_baby.png',   imgAdult: '/images/pets/cat_lihua_adult.png' },
   { key: 'cat_orange',   species: 'cat', name: '橘猫',     emoji: '🐱', imgBaby: '/images/pets/cat_orange_baby.png',  imgAdult: '/images/pets/cat_orange_adult.png' },

@@ -1,4 +1,6 @@
 // cloudfunctions/lib/visibility.js —— 任务在某日是否需要打卡（纯函数）
+// 【D1 单源】下方 SECTION 镜像到 miniprogram/utils/tasks.js 的 SLOT:visibility（gen:mirror 注入）。
+// ==MIRROR-SECTION:visibility==
 function toDate(str) {
   const p = String(str).split('-').map(Number);
   return new Date(p[0], p[1] - 1, p[2]);
@@ -8,18 +10,17 @@ function daysBetween(a, b) {
   return Math.round((toDate(b) - toDate(a)) / 86400000);
 }
 
-// 任务在某日是否需要打卡
+// 某任务在某日是否需要打卡
 // 规则（2026-09-17 调整）：
-//   ① 未生效（dateStr < 生效日期）→ 不显示
-//   ② 未设重复 → 生效后「每天」都显示（原为「仅生效当天」，与打卡场景不符：
-//      任务只在创建当天能打卡，第二天就消失）
-//   ③ 每 N 天 / 按周 → 仍按重复规则出现
+//   ① 未生效（dateStr < 生效日期）→ 不可见
+//   ② 未设重复 → 生效后「每天」都可见（原为仅生效当天，会让任务第二天就消失）
+//   ③ 每 N 天 / 按周 → 按重复规则出现
 function taskVisibleOn(task, dateStr) {
   if (!task || task.deleted) return false;
   const start = task.date;
   const r = task.repeat || {};
-  if (start && dateStr < start) return false;   // 还没到生效日期
-  if (!r.enabled) return true;                  // 生效后每天都可见
+  if (start && dateStr < start) return false;
+  if (!r.enabled) return true;
   if (r.type === 'day') {
     if (!start) return true;
     const diff = daysBetween(start, dateStr);
@@ -32,5 +33,6 @@ function taskVisibleOn(task, dateStr) {
   }
   return false;
 }
+// ==MIRROR-SECTION-END==
 
 module.exports = { toDate, daysBetween, taskVisibleOn };

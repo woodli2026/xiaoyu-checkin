@@ -660,7 +660,9 @@ test('宠物页：HUD 为两瓶常驻（成长瓶按 stagePct、心情瓶按 moo
   const root = path.join(__dirname, '..', 'miniprogram', 'pages', 'pet');
   const wxml = fs.readFileSync(path.join(root, 'pet.wxml'), 'utf8');
   const wxss = fs.readFileSync(path.join(root, 'pet.wxss'), 'utf8');
-  const js = fs.readFileSync(path.join(root, 'pet.js'), 'utf8');
+  // growthPct / moodPct 映射已下沉 utils/pet-page.js（D4），故合并两文件做视图口径校验
+  const js = fs.readFileSync(path.join(root, 'pet.js'), 'utf8') +
+    fs.readFileSync(path.join(root, '..', '..', 'utils', 'pet-page.js'), 'utf8');
 
   // ① 两个瓶子都在，且成长/心情各一（成长=玻璃心 / 心情=玻璃钻石）
   assert.ok(/class="flask heart"/.test(wxml), '缺少成长瓶（玻璃心）');
@@ -742,7 +744,9 @@ test('宠物页：本体为品种全身图 image 渲染，领养选择卡保留�
   const root = path.join(__dirname, '..', 'miniprogram');
   const wxml = fs.readFileSync(path.join(root, 'pages', 'pet', 'pet.wxml'), 'utf8');
   const wxss = fs.readFileSync(path.join(root, 'pages', 'pet', 'pet.wxss'), 'utf8');
-  const js = fs.readFileSync(path.join(root, 'pages', 'pet', 'pet.js'), 'utf8');
+  // 视图映射（petImg / petSrc* / petCls）已下沉 utils/pet-page.js（D4）；本测试合并页面与映射文件做视图口径校验
+  const js = fs.readFileSync(path.join(root, 'pages', 'pet', 'pet.js'), 'utf8') +
+    fs.readFileSync(path.join(root, 'utils', 'pet-page.js'), 'utf8');
 
   // ① 本体：两档制全阶段均为 image 渲染（主区绑 petSrc：互动时切动作差分图，kidbar 用默认 petImg），
   //    mode=aspectFit，且外层有 .pet-scale 阶段尺寸包裹层
@@ -870,7 +874,7 @@ test('宠物页：互动动画类与 keyframes 齐备（A/B 相位），attempt 
   assert.ok(/@keyframes fxFloat\b/.test(wxss), '粒子上浮动画丢失');
   assert.ok(/class="fx \{\{item\.kind\}\}"/.test(wxml), '粒子形状层未按 kind 区分');
   assert.ok(/\.fx-heart\s*\{/.test(wxss) && /\.fx-star\s*\{/.test(wxss), '爱心/星星形状样式丢失');
-  assert.ok(/makeFx\('heart', n, 3\)/.test(js) && /makeFx\('star', n, 3\)/.test(js), '粒子应为 3 个（性能口径 ≤3）');
+  assert.ok(/CF\.fxParticles\('heart', n, 3\)/.test(js) && /CF\.fxParticles\('star', n, 3\)/.test(js), '粒子应为 3 个（性能口径 ≤3）');
 
   // ⑤ 驱动机制（单次 setData，零时序依赖）：animType/animPhase 字段 + attempt 计数器 + 500ms 节流
   //    + A/B 相位交替 + setTimeout 兜底；旧 wx.nextTick 双段写法必须已删除（真机合并 setData 翻车根因）
@@ -983,7 +987,9 @@ test('宠物页：投喂每日上限口径齐备（FEED_LIMIT 双端 / petView �
   const fs = require('fs');
   const path = require('path');
   const root = path.join(__dirname, '..');
-  const js = fs.readFileSync(path.join(root, 'miniprogram', 'pages', 'pet', 'pet.js'), 'utf8');
+  // apply 的视图映射已下沉 utils/pet-page.js（D4）：合并两文件校验 apply 透出字段
+  const js = fs.readFileSync(path.join(root, 'miniprogram', 'pages', 'pet', 'pet.js'), 'utf8') +
+    fs.readFileSync(path.join(root, 'miniprogram', 'utils', 'pet-page.js'), 'utf8');
   const wxml = fs.readFileSync(path.join(root, 'miniprogram', 'pages', 'pet', 'pet.wxml'), 'utf8');
   const localSrc = fs.readFileSync(path.join(root, 'miniprogram', 'services', 'local', 'pet.js'), 'utf8');
   const cloudSrc = fs.readFileSync(path.join(root, 'cloudfunctions', 'petCRUD', 'index.js'), 'utf8');

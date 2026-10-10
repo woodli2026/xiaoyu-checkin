@@ -2,52 +2,13 @@ const { callApi } = require('../../utils/api');
 const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
 const pets = require('../../utils/pets');
+const cal = require('../../utils/calendar');
+const CF = require('../../utils/confetti');
+const { bubbleStyleFor } = require('../../utils/bubble');
 const { PRIVACY_KEY } = require('../../config');
 const { attachTabBarSync } = require('../../utils/tabbar');
 const session = require('../../utils/parent-session');
 
-// 宠物对话气泡主题：每个品种一套糖果色（背景渐变 a→b / 文字色 ink / 阴影 shadow）。
-// 不同宠物 → 不同气泡配色，呼应「不同宠物对应不同对话框」。
-// 无宠物（fallback）用默认黄。
-const BUBBLE_THEME = {
-  cat_lihua:    { a: '#FFD9A0', b: '#FFB05A', ink: '#7a4a12', shadow: 'rgba(255,150,60,.45)' },
-  cat_orange:   { a: '#FFE3A3', b: '#FFB23E', ink: '#804d00', shadow: 'rgba(255,160,40,.45)' },
-  cat_british:  { a: '#CFE3FB', b: '#9CC1F2', ink: '#2b4f86', shadow: 'rgba(120,170,240,.50)' },
-  cat_american: { a: '#E6ECF4', b: '#B9C4D6', ink: '#445268', shadow: 'rgba(150,165,190,.45)' },
-  cat_ragdoll:  { a: '#EFE0FB', b: '#CBA8EE', ink: '#5a3a86', shadow: 'rgba(190,150,235,.50)' },
-  dog_yellow:   { a: '#D6F0AE', b: '#9FD96E', ink: '#3c5a18', shadow: 'rgba(150,205,100,.50)' },
-  dog_labrador: { a: '#F0D6B8', b: '#D8A877', ink: '#6b4324', shadow: 'rgba(210,160,110,.50)' },
-  dog_shepherd: { a: '#F0D2A6', b: '#CFA067', ink: '#5e3c14', shadow: 'rgba(200,150,90,.48)' },
-  dog_poodle:   { a: '#FFD6EC', b: '#FFA6D2', ink: '#9a2e63', shadow: 'rgba(255,150,200,.50)' },
-  dog_beagle:   { a: '#FFE9A6', b: '#FFC24D', ink: '#7a4e00', shadow: 'rgba(255,185,70,.45)' }
-};
-const BUBBLE_DEFAULT = { a: '#FFE873', b: '#FFD226', ink: '#6b4a12', shadow: 'rgba(255,190,60,.45)' };
-function bubbleStyleFor(speciesKey) {
-  const t = (speciesKey && BUBBLE_THEME[pets.resolveSpeciesKey(speciesKey)]) || BUBBLE_DEFAULT;
-  return `--bub-a:${t.a};--bub-b:${t.b};--bub-ink:${t.ink};--bub-shadow:${t.shadow}`;
-}
-
-function pad2(n) { return n < 10 ? '0' + n : '' + n; }
-function buildCalendar(allTasks, checkIns, viewYm, today) {
-  const parts = viewYm.split('-').map(Number);
-  const y = parts[0];
-  const m = parts[1];
-  const startWd = new Date(y, m - 1, 1).getDay();
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const litSet = new Set(checkIns.map(c => c.date));
-  const cells = [];
-  for (let i = 0; i < startWd; i++) cells.push({ key: 'b' + i, blank: true });
-  for (let d = 1; d <= daysInMonth; d++) {
-    const ds = `${y}-${pad2(m)}-${pad2(d)}`;
-    cells.push({
-      key: ds, day: d, date: ds,
-      lit: litSet.has(ds),
-      today: ds === today,
-      done: T.dayAllDone(allTasks, checkIns, ds)
-    });
-  }
-  return { cells, label: y + '年' + m + '月' };
-}
 Page({
   behaviors: [require('../../behaviors/pin-reauth')],
   data: {
@@ -153,7 +114,7 @@ Page({
         level: res.level,
         viewYm,
         todayYm: viewYm,
-        calendar: buildCalendar(res.tasks || [], res.checkIns || [], viewYm, today),
+        calendar: cal.buildCalendar(res.tasks || [], res.checkIns || [], viewYm, today),
         todayDone: todayTasks.filter(t => t.checked).length,
         todayTotal: todayTasks.length,
         monthCount: monthLit.length,
@@ -179,15 +140,12 @@ Page({
     const viewYm = this.data.viewYm || today.slice(0, 7);
     this.setData({
       viewYm,
-      calendar: buildCalendar(this._allTasks || [], this._checkIns || [], viewYm, today)
+      calendar: cal.buildCalendar(this._allTasks || [], this._checkIns || [], viewYm, today)
     });
   },
   stepMonth(delta) {
-    let [y, m] = (this.data.viewYm || D.ymd(new Date()).slice(0, 7)).split('-').map(Number);
-    m += delta;
-    if (m > 12) { m = 1; y += 1; }
-    else if (m < 1) { m = 12; y -= 1; }
-    this.setData({ viewYm: `${y}-${pad2(m)}` });
+    const ym = this.data.viewYm || D.ymd(new Date()).slice(0, 7);
+    this.setData({ viewYm: cal.shiftYm(ym, delta) });
     this.renderCalendar();
   },
   prevMonth() { this.stepMonth(-1); },   // 前一个月
@@ -330,29 +288,7 @@ Page({
     }
   },
   burst() {
-    const colors = ['#FFC93C', '#FF9AA2', '#7Fd3ff', '#C8F5DD', '#DDD0FF', '#FFB36B', '#A0E7A0', '#FF8FB1'];
-    const cannons = [8, 26, 44, 62, 80, 92];          // 6 个礼花筒发射点
-    const shapes = ['rect', 'circle', 'star', 'ribbon'];
-    const pieces = [];
-    let id = 0;
-    cannons.forEach(x => {
-      const n = 16 + Math.floor(Math.random() * 5);   // 每炮 16-20 片
-      for (let i = 0; i < n; i++) {
-        const angle = (Math.random() * 150 - 75) * Math.PI / 180;   // -75°~75° 更宽锥形扩散
-        const dist = 240 + Math.random() * 360;
-        pieces.push({
-          id: id++,
-          x,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          shape: shapes[Math.floor(Math.random() * shapes.length)],
-          tx: Math.round(Math.sin(angle) * dist),
-          ty: -Math.round(Math.cos(angle) * dist) - 160,
-          rot: Math.round(Math.random() * 540),
-          delay: (Math.random() * 0.2).toFixed(2)
-        });
-      }
-    });
-    this.setData({ confetti: pieces, confettiFlash: true });
+    this.setData({ confetti: CF.cannonPieces(), confettiFlash: true });
     setTimeout(() => this.setData({ confetti: [] }), 2000);
     setTimeout(() => this.setData({ confettiFlash: false }), 700);
   },

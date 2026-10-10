@@ -3,7 +3,8 @@
 //
 // 关键前提：必须先剥离注释与字符串再匹配，否则注释里的示例代码会造成大量误报
 // （实测：未剥离时报 17 条坏 require，其中 100% 是注释中的 require('../utils/domain') 之类示例）。
-// 剥离时保留换行，使行号仍可对应原文件。
+// 剥离时保留换行，使行号仍可对应原文件（字符串内容刻意保留——require 的路径本身就在字符串里）。
+// 对「字符串里描述代码」的误报（生成器等），用行内 `// lint-ignore` 豁免该行。
 //
 // 范围：跳过 cloudfunctions/<fn>/lib/ 的 156 个生成副本（漂移由 npm run verify:lib 负责），
 // 只检查手写文件（当前 68 个）。
@@ -125,13 +126,24 @@ function ruleConsole(file, src) {
   return bad;
 }
 
+/** 行内豁免：行内含 `// lint-ignore` 则该行不参与任何规则。
+ *  用原始文本（未剥离注释）判定，故豁免注释本身不会被 strip 掉。
+ *  场景：生成器里「被生成的代码文本」字符串（如 gen-mirror 的 head）会伪装成真 require 被误报。 */
+function ignoreLines(raw) {
+  const set = new Set();
+  raw.split('\n').forEach((l, i) => { if (l.indexOf('// lint-ignore') >= 0) set.add(i + 1); });
+  return set;
+}
+
 /** 对单个源文件跑全部规则，返回命中列表（供 lint 主流程与单测共用） */
 function lintSource(file, raw) {
   const src = strip(raw);
+  const ignore = ignoreLines(raw);
+  const keep = (hits) => hits.filter((h) => !ignore.has(h.line));
   return []
-    .concat(ruleRequirePath(file, src))
-    .concat(ruleDebugger(src))
-    .concat(ruleConsole(file, src));
+    .concat(keep(ruleRequirePath(file, src)))
+    .concat(keep(ruleDebugger(src)))
+    .concat(keep(ruleConsole(file, src)));
 }
 
 /** 扫描全仓并返回结果（供 CLI 与单测共用；单测走进程内调用，不用 spawn） */
@@ -159,6 +171,6 @@ function main() {
   process.exit(r.problems ? 1 : 0);
 }
 
-module.exports = { strip, lintSource, collect, isGeneratedCopy, ruleRequirePath, ruleDebugger, ruleConsole, runAll };
+module.exports = { strip, ignoreLines, lintSource, collect, isGeneratedCopy, ruleRequirePath, ruleDebugger, ruleConsole, runAll };
 
 if (require.main === module) main();

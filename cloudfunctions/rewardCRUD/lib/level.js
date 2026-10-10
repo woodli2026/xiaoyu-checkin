@@ -1,5 +1,7 @@
 // cloudfunctions/lib/level.js —— 星级评定（纯函数）
-// ≥25→5, ≥18→4, ≥10→3, ≥4→2, 否则 1
+// 【D1 单源】下方 SECTION 镜像到 miniprogram/utils/domain.js 的 SLOT:level（gen:mirror 注入）。
+// ==MIRROR-SECTION:level==
+// 星级评定：≥25→5, ≥18→4, ≥10→3, ≥4→2, 否则 1
 function levelOf(streak) {
   const n = Number(streak) || 0;
   if (n >= 25) return 5;
@@ -8,5 +10,6 @@ function levelOf(streak) {
   if (n >= 4) return 2;
   return 1;
 }
+// ==MIRROR-SECTION-END==
 
 module.exports = { levelOf };

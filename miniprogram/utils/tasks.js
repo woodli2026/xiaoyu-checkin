@@ -1,8 +1,13 @@
+// @ts-check
 // utils/tasks.js —— 前端纯逻辑：任务可见性 / 优先级旗子 / 分组 / 标签字典
+//
+// 【D1 单源（2026-10-10）】下方 SLOT 段落由 `npm run gen:mirror` 从 cloudfunctions/lib/visibility.js
+// 注入，请勿手改 SLOT 内内容（改源后跑 gen:mirror；`npm run verify:mirror` 会校验）。
 
+// ==MIRROR-SLOT:visibility (AUTO-GENERATED ← cloudfunctions/lib/visibility.js)==
 function toDate(str) {
-  const parts = String(str).split('-').map(Number);
-  return new Date(parts[0], parts[1] - 1, parts[2]);
+  const p = String(str).split('-').map(Number);
+  return new Date(p[0], p[1] - 1, p[2]);
 }
 
 function daysBetween(a, b) {
@@ -10,7 +15,7 @@ function daysBetween(a, b) {
 }
 
 // 某任务在某日是否需要打卡
-// 规则（与 cloudfunctions/lib/visibility.js 同口径，2026-09-17 调整）：
+// 规则（2026-09-17 调整）：
 //   ① 未生效（dateStr < 生效日期）→ 不可见
 //   ② 未设重复 → 生效后「每天」都可见（原为仅生效当天，会让任务第二天就消失）
 //   ③ 每 N 天 / 按周 → 按重复规则出现
@@ -32,6 +37,7 @@ function taskVisibleOn(task, dateStr) {
   }
   return false;
 }
+// ==MIRROR-SLOT-END==
 
 // 优先级：高=红🚩 / 中=黄 / 低=绿 / 无=无旗
 const PRIORITY = {

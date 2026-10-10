@@ -1,11 +1,18 @@
 // cloudfunctions/lib/pets.js —— 宠物模块纯逻辑（云端版）
-// 与 miniprogram/utils/pets.js 是两份实现（云函数无法跨目录 require），
-// 由 __tests__/pet.test.js 的「双份实现一致」用例守卫，任一侧漂移都会让 npm test 变红。
 // 覆盖：物种 / 五阶段 / 命名校验 / 心情衰减 / 互动连续天数 / 互动统计
+//
+// 【D1 单源（2026-10-10）】本文件是宠物纯逻辑的**唯一手写来源**：
+//   · miniprogram/utils/pets.js 由 `npm run gen:mirror` 从下方标记之后的内容生成（勿手改镜像）；
+//   · `npm run verify:mirror` 校验镜像与源一致（__tests__/mirror-sync.test.js 已接入 npm test）；
+//   · 行为一致性另由 __tests__/pet.test.js 的「双份实现一致」用例守卫。
+//   注：前端镜像的依赖注入行为 `const D = require('./domain')`（云端为 util+streak 合并），
+//       已在 tools/gen-mirror.js 的 head 中声明，故不在下方正文内。
 
 const U = require('./util');
 const S = require('./streak');
 const D = Object.assign({}, U, S);   // 前端对应 require('../utils/domain')
+
+// ==MIRROR-BODY-START==
 
 // 品种即花色（2026-09 升级）：领养时选物种（cat/dog），品种在物种内随机 5 选 1 入库。
 // SPECIES 为 10 个品种 key（5 猫 / 5 狗）；emoji 保留作兜底渲染与老弹层文案。

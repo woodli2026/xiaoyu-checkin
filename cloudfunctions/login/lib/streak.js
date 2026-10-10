@@ -1,6 +1,8 @@
 // cloudfunctions/lib/streak.js —— 连续打卡天数（纯函数）
+// 【D1 单源】下方 SECTION 镜像到 miniprogram/utils/domain.js 的同名 SLOT（gen:mirror 注入，勿手改镜像侧）。
 const { addDays } = require('./util');
 
+// ==MIRROR-SECTION:streak==
 // 从 asOf 向前数「连续含打卡」的天数
 function streakOf(datesOrSet, asOf) {
   const set = datesOrSet instanceof Set ? datesOrSet : new Set(datesOrSet || []);
@@ -17,5 +19,6 @@ function displayStreak(datesOrSet, today) {
   const set = datesOrSet instanceof Set ? datesOrSet : new Set(datesOrSet || []);
   return streakOf(set, set.has(today) ? today : addDays(today, -1));
 }
+// ==MIRROR-SECTION-END==
 
 module.exports = { streakOf, displayStreak };

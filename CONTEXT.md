@@ -4,7 +4,7 @@
 > 作用：以「术语表 + 架构不变量 + 约束清单 + 已知债务」的形态，把**代码里没写清楚、但决定了怎么改才对**的信息集中在一处。
 > 权威来源优先级：**代码 > 本文件 > docs/ 下的历史文档**。若本文件与代码冲突，以代码为准并顺手修正本文件。
 >
-> 最后校对：2026-10-10（对照 commit 工作区实况；D1 seed 试点 / D3 local.js 拆分 / C canFeed 单源 / child.streak 死字段移除 后）。
+> 最后校对：2026-10-10（对照 commit 工作区实况；第三批：D1 生成式单源扩至 pets/domain/tasks + D4 页面纯函数下沉 + D8 `// @ts-check` 试点 后）。
 
 ---
 
@@ -13,7 +13,7 @@
 | 问题 | 看哪里 |
 |---|---|
 | 某个操作的数据从哪来 | `miniprogram/utils/api.js` → 云端 `cloudfunctions/<name>/index.js` 或本地 `miniprogram/services/local.js` |
-| 业务规则（连续天数/星级/可见性/兑换） | `miniprogram/utils/domain.js`、`tasks.js`、`pets.js` ↔ `cloudfunctions/lib/*`（双份，勿只改一份） |
+| 业务规则（连续天数/星级/可见性/兑换） | `miniprogram/utils/domain.js`、`tasks.js`、`pets.js`（**均为生成式镜像**）→ 唯一源在 `cloudfunctions/lib/*`（改源后跑 `npm run gen:mirror`） |
 | 数据字段口径 | 本文件 §5 数据模型 |
 | 页面 UI 约束（为什么元素看得见却点不到） | `miniprogram/app.wxss` 顶部注释 + §7 隐式前提 |
 | 改完怎么验 | `npm test`（含 lint 守卫）/ `npm run check` / `npm run lint` / §9 命令 |
@@ -26,8 +26,8 @@
 - **命名**：「雨宝记」为对外名（2026-09 由「小雨记」更名）。代码里历史标识符 `xiaoyu` / `xy_` 前缀**保持不变**，属刻意保留，不要批量改名。
 - **版本**：`1.0.0`（`miniprogram/config.js` 的 `APP_VERSION`，显示在「关于」页）。
 - **当前运行档位**：`CLOUD_ENV = ''` → **本地兜底层**（wx.storage）。云端云函数已写完但**尚未部署**（顺延 V1.1）。
-- **技术约束**：无构建工具、无 TypeScript、无 ESLint、无第三方依赖。`npm run check` 做**语法解析级**校验；`npm run lint`（`tools/lint.js`，零依赖自研）做**跨文件可解析性 + 发布卫生**检查。类型安全完全靠约定 + 测试。
-- **规模**：前端 22 个 js + 11 wxml + 11 wxss，另含 D3 拆分出的 `services/local/*` 域模块 10 个；云函数 13 个，每个自带 15 份 lib 副本（`lib/` 源 15 个文件 → 195 个副本 → cloudfunctions 下共 210 个 js）。
+- **技术约束**：无构建工具、无 TypeScript、无 ESLint、无第三方依赖。`npm run check` 做**语法解析级**校验；`npm run lint`（`tools/lint.js`，零依赖自研）做**跨文件可解析性 + 发布卫生**检查。类型安全靠约定 + 测试；**D8 试点（2026-10-10）**：纯逻辑模块（`domain/tasks/calendar/bubble/confetti/pet-page`）已加 `// @ts-check` + JSDoc，仅供 IDE 提示，不装 tsc、不进 CI。
+- **规模**（2026-10-10 第三批后）：前端 js 42 个（含 `utils/` 16 + `services/local/` 10 + `behaviors/` 2）；云函数 13 个，每个自带 15 份 lib 副本（`cloudfunctions/lib/` 源 15 文件 → 195 副本 → cloudfunctions 下共 210 个 js）；`__tests__/` 22 个测试文件；全仓 293 个 js（`npm run check` 范围）。
 
 ---
 
@@ -52,18 +52,23 @@ miniprogram/            小程序前端
     demo.js             演示辅助 resetAll（仅本地独占）
   utils/
     api.js              统一数据入口 callApi(name, params) —— 云端/本地自动路由 + 错误抛出
-    domain.js           纯逻辑：日期/连续天数/星级/令牌/打卡核/兑换核/空闲判定
-    tasks.js            纯逻辑：任务可见性/优先级/分组/标签字典
-    pets.js             纯逻辑：宠物物种/阶段/命名/心情衰减/互动统计 + 投喂上限判定（feedCountToday/canFeed，C 单源）
+    domain.js           纯逻辑：日期/连续天数/星级/令牌/打卡核/兑换核/空闲判定 —— ⚠️ SLOT 段**机生成**（源见 §4.2）
+    tasks.js            纯逻辑：任务可见性/优先级/分组/标签字典 —— ⚠️ visibility 段**机生成**
+    pets.js             纯逻辑：宠物物种/阶段/命名/心情衰减/互动统计 + 投喂上限（feedCountToday/canFeed，C 单源）—— ⚠️ **整文件机生成**，唯一源 `lib/pets.js`
+    calendar.js         纯函数：日历格 buildCalendar + 月份增减 shiftYm（D4 自 home.js 下沉）
+    bubble.js           纯函数：气泡配色 bubbleStyleFor + BUBBLE_THEME（D4 自 home.js 下沉）
+    confetti.js         纯函数：礼花粒子 cannonPieces/risePieces/fxParticles（D4 自 home·pet 下沉）
+    pet-page.js         纯函数：宠物页 data 映射 pagePetData/petClsOf（D4 自 pet.js 下沉）
     feed.js             纯展示：动态列表时间/分组文案 + buildFeed（动态数据聚合，E 下沉单源）
-    seed.js             开箱预置数据（8 任务 + 8 奖励）—— ⚠️ **自动生成的镜像**，唯一源是 `lib/seed.js`；用 `npm run gen:mirror` 重建
+    dashboard.js        纯函数：buildDashboard 看板聚合（E 下沉单源，与 lib/dashboard.js 双份守卫）
+    seed.js             开箱预置数据（8 任务 + 8 奖励）—— ⚠️ **整文件机生成**，唯一源 `lib/seed.js`；`npm run gen:mirror` 重建
     storage.js          本地存储键名表 KEYS + read/write/remove/nextId
     tabbar.js           自定义 tabBar 显隐「派生」控制器
     icons.js            emoji 图标候选集（任务/奖励各 6 类 × 24）
     ops.js              **后端操作单一来源**（候选③，2026-10-09）：函数名/op/是否需令牌的唯一清单；豁免表与守卫测试均引用它，改它须同步云函数与 local.js 导出
     pin-reauth.js       家长 PIN 闸逻辑收拢（Phase B，2026-10-09）：onPinClose/onReauthNeed/onPinComplete/onPinForgot 的可测纯函数，由 behaviors/pin-reauth.js 转发给页面
   components/           公共组件：day-sheet / emoji-picker / pin-pad / privacy-sheet
-  behaviors/            小程序原生 Behavior：pin-reauth.js（页面样板收敛，五页通过 behaviors 接入）
+  behaviors/            小程序原生 Behavior：pin-reauth.js（页面样板收敛，五页接入）、child-photo.js（宝宝头像选图 + 隐私授权闸门，D4 自 mine.js 抽出）
   custom-tab-bar/       自定义底部导航（原生 tabBar 字号不可调，故自定义）
 
 cloudfunctions/         云函数（部署单元）
@@ -72,8 +77,8 @@ cloudfunctions/         云函数（部署单元）
   <name>/index.js       各云函数入口（自包含：自带 lib/ 副本）
   <name>/lib/           ⚠️ 构建产物，由 setup.js 生成，勿手改
 
-__tests__/              21 个测试文件（node:test，无第三方依赖）
-tools/                  acceptance.js（接口验收）/ ui-acceptance.js（WXML 结构验收）/ check-syntax.js（语法解析）/ lint.js（D8 静态检查）/ gen-mirror.js（D1 单源 seed 镜像生成，见 §9）
+__tests__/              22 个测试文件（node:test，无第三方依赖）
+tools/                  acceptance.js（接口验收）/ ui-acceptance.js（WXML 结构验收）/ check-syntax.js（语法解析）/ lint.js（D8 静态检查，含行内 `// lint-ignore` 豁免）/ gen-mirror.js（D1 单源镜像生成：whole + section 两种模式，见 §9）
 docs/                   需求·设计·方案·计划·隐私·发布（PRD / PLAN / ACCEPTANCE / release-checklist 等）
 ```
 
@@ -142,14 +147,23 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 - `useCloud()` 以 `app.onLaunch` 显式写入的 `_cloudFlag` 为准（避免启动早期 `getApp()` 时序不确定）。
 - **新增一个数据操作 = 同时改 3 处**：`services/local.js`（本地实现）+ `cloudfunctions/<新函数>/index.js`（云端实现）+ `cloudfunctions/setup.js` 的 `FUNCTIONS` 数组。漏一处即路由不到。
 
-### 4.2 双份镜像清单（改一份必须改另一份）
+### 4.2 镜像清单（纯逻辑组为「唯一源 → 机生成」；其余仍双份手写）
+
+> domain/tasks/pets/seed 已改为**生成式镜像**：唯一手写点在 `cloudfunctions/lib/*`，前端副本由
+> `npm run gen:mirror` 注入（源侧 `// ==MIRROR-SECTION:<name>==` ↔ 前端 `// ==MIRROR-SLOT:<name>==`；
+> seed/pets 为整文件 `// ==MIRROR-BODY-START==`）。**只改云端源 → gen:mirror → sync**，不再两份手写。
+
+| 前端（机生成） | 云端唯一源 | 守卫测试 |
+|---|---|---|
+| `utils/domain.js`（SLOT：util/streak/level/checkInCore/redeemCore） | `lib/util.js` + `lib/streak.js` + `lib/level.js` + `lib/checkInCore.js` + `lib/redeemCore.js` | `mirror-sync.test.js` + `core.test.js`（行为级） |
+| `utils/tasks.js`（SLOT：visibility） | `lib/visibility.js` | `mirror-sync.test.js` + `core.test.js`（行为级） |
+| `utils/pets.js`（整文件） | `lib/pets.js` | `mirror-sync.test.js` + `pet.test.js`（双份一致） |
+| `utils/seed.js`（整文件） | `lib/seed.js` | `mirror-sync.test.js` + `seed.test.js` |
+
+> ⚠️ 以下仍为**双份手写**（改一份必须改另一份）：
 
 | 前端 | 云端 | 守卫测试 |
 |---|---|---|
-| `utils/domain.js` | `lib/util.js` + `lib/streak.js` + `lib/level.js` + `lib/checkInCore.js` + `lib/redeemCore.js` | `core.test.js`（displayStreak / levelOf / checkInCore / redeemCore） |
-| `utils/tasks.js` | `lib/visibility.js` | `core.test.js`（visibility 双份一致） |
-| `utils/pets.js` | `lib/pets.js` | `pet.test.js`（pets 双份一致） |
-| `utils/seed.js`（**机生成**，见 §9 `gen:mirror`） | `lib/seed.js`（唯一源） | `seed.test.js` + `mirror-sync.test.js` |
 | `services/local.js` 的 PIN 常量 | `lib/pin.js` | `local.test.js`（默认 PIN 口径） |
 | `services/local.js` 的 `REDEEM_BLOCK_MSG` | `redeem/index.js` 的 `BLOCK_MSG` | `__tests__/mirror-guard.test.js`（键集 + 文案值一致） |
 | `services/local.js#petView` | `cloudfunctions/petCRUD/index.js#petView` | `__tests__/mirror-guard.test.js`（输出键集一致） |
@@ -269,14 +283,14 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 
 | # | 债务 | 现状 | 改进方向 |
 |---|---|---|---|
-| D1 | **双份镜像无单一来源** | `domain/tasks/pets` 3 组逻辑各存两份（`seed` 已改为生成式，见右），靠守卫测试兜底；新口径需手改两处并保证字面等价 | **部分缓解（2026-10-10 seed 试点）**：`cloudfunctions/lib/seed.js` 定为唯一手写源，`miniprogram/utils/seed.js` 由 `npm run gen:mirror` **生成**（带 AUTO-GENERATED 头），`npm run verify:mirror` + `__tests__/mirror-sync.test.js` 守漂移（已接入 npm test）。domain/tasks/pets 三组仍双份手写（迁移需处理函数/常量/require 引用，留后续）。**盲区补盲（2026-10-09 Phase A）**：`petView` / `REDEEM_BLOCK_MSG` 守卫见 `mirror-guard.test.js` |
-| D2 | **lib 副本膨胀** | `setup.js` 把 12 个 lib 文件复制进 13 个函数目录 = 156 个副本（占 cloudfunctions 下 182 个 js 的 86%），改 lib 后必须记得 `npm run sync` | **已立安全网（2026-10-09 候选②-A）**：`setup.js --check` + `npm run verify:lib` + `__tests__/lib-sync.test.js` 守卫，改 lib 忘跑 sync → 测试/校验立即变红；**盲区补盲（2026-10-09 Phase A）**：此前安全网只校 lib↔副本、不校「前端 services ↔ 云端云函数」的 D1 级镜像，`petView` / `REDEEM_BLOCK_MSG` 已加 `__tests__/mirror-guard.test.js` 守卫；体积问题仍待 V1.1 公共依赖方案 |
+| D1 | ~~双份镜像无单一来源~~ | ~~`domain/tasks/pets` 3 组逻辑各存两份，靠守卫测试兜底~~ | **已销债（2026-10-10 第三批）**：`gen-mirror.js` 扩出 **section 模式**（源侧 `// ==MIRROR-SECTION:<name>==` → 前端 `// ==MIRROR-SLOT:<name>==` 注入，其余内容原地保留）；seed/pets 走 whole 整文件模式，domain（util/streak/level/checkInCore/redeemCore 五段）/tasks（visibility 一段）走 section。前端 4 文件全部**机生成**，`mirror-sync.test.js` 守卫 8 条映射（whole 2 + section 6）。**仍双份手写**的只剩 `REDEEM_BLOCK_MSG` / `petView` / PIN 常量（见 §4.2 第二张表） |
+| D2 | **lib 副本膨胀** | `setup.js` 把 15 个 lib 文件复制进 13 个函数目录 = 195 个副本（占 cloudfunctions 下 210 个 js 的 93%），改 lib 后必须记得 `npm run sync` | **已立安全网（2026-10-09 候选②-A）**：`setup.js --check` + `npm run verify:lib` + `__tests__/lib-sync.test.js` 守卫，改 lib 忘跑 sync → 测试/校验立即变红；**盲区补盲（2026-10-09 Phase A）**：此前安全网只校 lib↔副本、不校「前端 services ↔ 云端云函数」的 D1 级镜像，`petView` / `REDEEM_BLOCK_MSG` 已加 `__tests__/mirror-guard.test.js` 守卫；体积问题仍待 V1.1 公共依赖方案 |
 | D3 | ~~`services/local.js` 单体~~ | ~~842 行→E 后 774 行，一个文件承担 14 个操作 + 校验 + 哈希 + 视图映射~~ | **已销债（2026-10-10）**：按域拆为 `services/local/{store,auth,dashboard,checkin,task,reward,child,feed,pet,demo}.js`，`local.js` 只做聚合导出（导出集/签名不变，`ops.test.js`/`pet.test.js` 守卫）；行为语义零变更（`npm test` 全绿） |
-| D4 | **页面 JS 偏大** | `mine.js 559` / `pet.js 421` / `home.js 376`，弹层状态与业务逻辑同处一文件 | **部分缓解（2026-10-09 Phase B）**：家长 PIN 闸方法已抽 `behaviors/pin-reauth.js` + `utils/pin-reauth.js`，五页各减 ~40 行样板；其余弹层状态机仍待抽；纯展示计算下沉到 utils |
+| D4 | **页面 JS 偏大** | 实测（2026-10-10 第三批后）：`home.js 320` / `mine.js 291` / `pet.js 279` / `tasks.js 222`（第三批前为 383/387/333/222） | **已缓解（2026-10-10 第三批）**：纯展示计算下沉 4 个纯函数模块——`utils/calendar.js`（日历格/月份增减）、`bubble.js`（气泡配色）、`confetti.js`（礼花粒子）、`pet-page.js`（宠物页 data 映射），三页共减 **213 行**，并有行为级单测 `page-utils.test.js`；mine 的选图长流程（~96 行）抽为 `behaviors/child-photo.js`。**刻意保留未抽**：弹层开关 `openX/closeX` 两行样板（tabBar 显隐已由 `utils/tabbar.js#SHEET_KEYS` 派生承担，再抽需改 wxml 绑定且本环境无法真机验证 → 风险 > 收益） |
 | D5 | **注释口径漂移** | `miniprogram/services/local.js:2` 仍写「接口契约与 **8 个云函数**完全一致」，实际 **13 个**；`lib/token.js` 内的「8 个云函数」属历史设计说明（`docs/README-小程序.md` 已记录 8→13 的修正）。功能无影响，但会误导读代码的人 | **已销债（2026-10-10）**：`local.js`（现为聚合出口）顶部注释已改「13 个云函数」（原写 8）；D3 拆分后该注释保留于 `services/local.js`。`ops.test.js` 的「云函数目录 ↔ ops.js ↔ local.js 导出」三者一致守卫不变；`lib/token.js` 的「8 个云函数」为历史设计说明，保留不动 |
 | D6 | **密钥治理 —— 已修复（2026-10-09）** | 原为「env 缺失即回退硬编码弱密钥」（`xiaoyu-dev-secret-change-me` / `xiaoyu-pin-salt`），属静默失败：忘配环境变量也能正常跑，而家长令牌可被任何人伪造。**现已改为惰性 fail-fast**：`lib/token.js` 的 `getSecret()` 与 `lib/pin.js` 的 `getSalt()` 在使用点抛错（不在模块加载时抛，否则打挂 tests）。同日**轮换密钥**：旧值曾随 `README-小程序.md` 进入 git 历史（commit `3e65934`/`7ce1e9f8`），按泄露处理 | 剩余仅平台操作：V1.1 上云前把新值配进 13 个云函数的环境变量（全函数一致）。守卫 `__tests__/secret-guard.test.js` 防回退 |
 | D7 | **本地层静默解锁绕过 PIN** | `unlockParent({silent:true})` 本地可免 PIN 签发令牌（设备信任模型），云端未接入 | 云端接入设备信任后再放开；当前若误开云端会退回「不静默」，属安全设计而非 bug |
-| D8 | **无静态类型 / lint 刚起步** | **已立 `tools/lint.js`（2026-10-09 Phase C）**：零依赖，3 条规则（require 相对路径可解析 / 禁 `debugger` / `miniprogram` 内禁 `console.log`），基线 0 问题并已接入 `npm test`。范围刻意排除 `cloudfunctions/*/lib/` 生成副本（漂移归 `verify:lib`）。**仍缺静态类型** | 未做 `eslint`（与零依赖风格冲突、需为 156 个副本配 ignore）；类型安全仍靠约定 + 测试，如需可加 `//@ts-check` + JSDoc（不装 tsc 则仅 IDE 提示） |
+| D8 | **无静态类型 / lint 刚起步** | **已立 `tools/lint.js`（2026-10-09 Phase C）**：零依赖，3 条规则（require 相对路径可解析 / 禁 `debugger` / `miniprogram` 内禁 `console.log`），基线 0 问题并已接入 `npm test`。范围刻意排除 `cloudfunctions/*/lib/` 生成副本（漂移归 `verify:lib`）。**类型标注试点已落地（2026-10-10 第三批）**：纯逻辑模块 `domain / tasks / calendar / bubble / confetti / pet-page` 已加 `// @ts-check` + JSDoc（仅 IDE 提示，零依赖、不装 tsc、不进 CI） | **未做 `eslint`**（与零依赖风格冲突、需为 195 个副本配 ignore）；含 `wx` 全局的模块（如 `api.js`）暂**不加** `@ts-check`——未声明的全局会报红，需引入 d.ts 声明文件，留后续。类型安全其余仍靠约定 + 测试。lint 新增行内 `// lint-ignore` 豁免（用于生成器里「描述代码」的字符串） |
 | D9 | **命名不一致** | 本地 `xy_checkIns` vs 云端集合 `checkIns`；历史 `xiaoyu` 前缀 | 属刻意保留，不建议改；如需统一，走一次性迁移脚本 + 幂等守卫 |
 | D10 | **`resetAll` 只在本地** | `services/local.js` 导出演示用 `resetAll`，无云端对应 | 保持现状即可（否则云上会「一键删数据」）；如需云端重置请加二次确认 + 令牌 |
 | D11 | ~~令牌传递散布 5 页~~ | ~~4 处手写 globalData 三行赋值 + ~21 处 parentToken 传参~~ | **已销债**（2026-10-08，ADR-0001 + `utils/parent-session.js`）：页面零令牌感知，守卫测试防回归 |
@@ -290,13 +304,13 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 ## 9. 常用命令与工作流
 
 ```bash
-npm test          # 21 个测试文件（node:test，无依赖）—— 137 个用例（含 mirror-guard/view-shape-guard/child-rules-guard/runtime-guard/aggregate-guard/mirror-sync/lint/secret-guard 等守卫）
-npm run check     # 全量语法解析（miniprogram/cloudfunctions/__tests__/tools，287 文件）
-npm run lint      # 静态检查 90 个手写文件：require 路径可解析 / 禁 debugger / miniprogram 内禁 console.log（已接入 npm test）
+npm test          # 22 个测试文件（node:test，无依赖）—— 148 个用例（含 mirror-guard/view-shape-guard/child-rules-guard/runtime-guard/aggregate-guard/mirror-sync/page-utils/lint/secret-guard 等守卫）
+npm run check     # 全量语法解析（miniprogram/cloudfunctions/__tests__/tools，293 文件）
+npm run lint      # 静态检查 96 个手写文件：require 路径可解析 / 禁 debugger / miniprogram 内禁 console.log（已接入 npm test；支持行内 `// lint-ignore` 豁免）
 npm run sync      # ⚠️ 改过 cloudfunctions/lib/ 后必跑：重建 package.json + 复制 lib 到 13 个函数（现 15 文件/函数）
 npm run verify:lib # 校验 lib 源与 13 目录副本逐字节一致（防忘 sync 漂移；已接入 npm test 守卫）
-npm run gen:mirror    # ⚠️ 改过 cloudfunctions/lib/seed.js 后必跑：从唯一源生成 miniprogram/utils/seed.js
-npm run verify:mirror # 校验 seed 生成式镜像与唯一源一致（已接入 npm test 守卫 __tests__/mirror-sync.test.js）
+npm run gen:mirror    # ⚠️ 改过任一唯一源（lib/ 下 seed·pets·util·streak·level·checkInCore·redeemCore·visibility）后必跑：重建前端镜像
+npm run verify:mirror # 校验全部生成式镜像与唯一源一致（whole 2 + section 6；已接入 npm test 守卫 __tests__/mirror-sync.test.js）
 npm run acceptance      # tools/acceptance.js —— 数据层接口验收
 npm run ui-acceptance   # tools/ui-acceptance.js —— WXML 结构验收
 ```
@@ -304,15 +318,13 @@ npm run ui-acceptance   # tools/ui-acceptance.js —— WXML 结构验收
 ### 标准改动流程
 
 ```
-改纯逻辑（domain/tasks/pets）
-  → 同步云端镜像（lib/*）
-  → npm run sync
-  → npm test（守卫测试必须绿）
-
-改 seed 数据（唯一源在 lib/seed.js）
-  → 只改 cloudfunctions/lib/seed.js（前端 utils/seed.js 是机生成镜像，勿手改）
-  → npm run gen:mirror（重新生成镜像）→ npm run sync（分发到 13 函数）
-  → npm test（seed.test.js + mirror-sync.test.js 守卫必须绿）
+改纯逻辑（domain/tasks/pets/seed）
+  → 只改 cloudfunctions/lib/* 的**唯一源**（前端 utils/{domain,tasks,pets,seed}.js 是机生成镜像，勿手改）
+      · pets / seed = 整文件镜像（改 `// ==MIRROR-BODY-START==` 之后的正文）
+      · domain      = 改 lib/{util,streak,level,checkInCore,redeemCore}.js 的 `// ==MIRROR-SECTION:*==` 段
+      · tasks       = 改 lib/visibility.js 的 SECTION 段
+  → npm run gen:mirror（重建镜像）→ npm run sync（分发到 13 函数）
+  → npm test（mirror-sync.test.js + 行为级守卫必须绿）
 
 改数据操作（新增/修改 op）
   → services/local/<域>.js（D3 后按域拆分；新增导出须同步 services/local.js 聚合）
@@ -333,11 +345,11 @@ npm run ui-acceptance   # tools/ui-acceptance.js —— WXML 结构验收
 
 ## 10. 发布状态与待办（架构相关）
 
-- **已完成**：v1.0 本地层全功能、**137/137 测试**、全量语法 0 错误、lint 0 问题、宠物模块定稿、隐私授权闸门修复；架构阶段 ①令牌会话 / ④删旁路 / ③ops表 / ②-A(sync安全网) / **Phase A(petView·REDEEM_BLOCK_MSG 镜像守卫)** / **Phase B(家长 PIN 闸页面样板收敛)** / **Phase C(D8 静态检查 tools/lint.js)** 均已落地；**D6 密钥治理已修复**（兜底移除 + 密钥轮换 + 守卫）；**架构深化轨道（2026-10-10/11）**：B′(视图形状守卫) / B(宝宝档案校验守卫) / A(`lib/runtime.js` 授权深模块 D12) / E(看板·动态聚合抽纯函数 D13) / **D1(seed 单源试点)** / **D3(local.js 按域拆分)** / **C(投喂上限 canFeed 单源 D14)** / **D(child.streak 死字段移除 D15)** / **D5(注释口径修正)** 全部落地。
+- **已完成**：v1.0 本地层全功能、**148/148 测试**、全量语法 0 错误（293 文件）、lint 0 问题、宠物模块定稿、隐私授权闸门修复；架构阶段 ①令牌会话 / ④删旁路 / ③ops表 / ②-A(sync安全网) / **Phase A(petView·REDEEM_BLOCK_MSG 镜像守卫)** / **Phase B(家长 PIN 闸页面样板收敛)** / **Phase C(D8 静态检查 tools/lint.js)** 均已落地；**D6 密钥治理已修复**（兜底移除 + 密钥轮换 + 守卫）；**架构深化轨道**——第一批（B′ 视图形状守卫 / B 宝宝档案校验守卫 / A `lib/runtime.js` 授权深模块 D12）、第二批（E 看板·动态聚合抽纯函数 D13 / D1 seed 单源试点 / D3 local.js 按域拆分 / C canFeed 单源 D14 / D child.streak 死字段 D15 / D5 注释口径修正）、**第三批（2026-10-10）**：**D1 生成式单源扩至 pets/domain/tasks（section 模式）/ D4 页面纯函数下沉 + child-photo behavior / D8 @ts-check 试点** 全部落地。
 - **D6 剩余（平台操作，非代码）**：V1.1 上云前把新的 `XY_TOKEN_SECRET` / `XY_PIN_SALT` 配进 13 个云函数环境变量（值见 `docs/README-小程序.md` §3.4，该文件 gitignore）。**v1.0 本地单机模式不依赖这两项，不影响上线**。
 - **顺延 V1.1（云侧）**：云端部署 → `CLOUD_ENV` 填写 → R10 云端静默解锁 → `petCRUD` 云上线 → 密钥轮换。
 - **v1.0 审核状态（2026-10-10 更新）**：**✅ 已通过微信审核（2026-10-10）**。门 A 真机走查 / 门 B 代码三关 / 门 C 平台侧全部通过。**下一步：在 MP 后台手动点「提交发布」才正式上线**。
-  - ⚠️ 发布前**不要**在开发者工具上传新代码——会覆盖「审核通过待发布」的版本。本轮架构改动（D1/D3/C/D/D5）仅落**本地 git**，与线上运行无关，**待 V1.1 云化或下次发版时再上传**。
+  - ⚠️ 发布前**不要**在开发者工具上传新代码——会覆盖「审核通过待发布」的版本。三批架构改动（`718f897` → `99114b4` → `dc15323` → 第三批）仅落**本地 git**，与线上运行无关，**待 V1.1 云化或下次发版时再上传**。
 - **AppID**：`wxb80f4e43f9c99714`（本人账号）；备案主体 个人。服务类目：原定「工具-效率」**已于 2026-10-09 核实下线**，改选「工具-备忘录」（可加「工具-日历」），见 `docs/v1.0-release-checklist.md` §3.0。
 - **平台侧进度**：隐私指引 ✅ 已审批通过；个人备案 ✅ 已完成、备案号已回填 `config.js`（assume-unchanged，不入库）；平台注册名 ✅ 已改「雨宝记」；门 A 真机走查 ✅ 已通过；服务类目 ✅ 已改选「工具-备忘录」；提交审核 ✅ 已完成并通过（2026-10-10）。
 
