@@ -22,7 +22,7 @@ const SHEET_KEYS = [
   // pages/tasks
   'showEditor', 'showConfirm', 'showIcon',
   // pages/home
-  'showDay', 'showPin', 'showRedeem', 'showPrivacy',
+  'showDay', 'showPin', 'showRedeem', 'showPrivacy', 'showPraise',
   // pages/feed
   'showDetail',
   // pages/mine

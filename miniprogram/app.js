@@ -1,8 +1,7 @@
 // app.js —— 全局基座：云初始化 / 静默登录 / 双模式态 / 家长Token生命周期
 const { callApi, setUseCloud } = require('./utils/api');
-const { CLOUD_ENV, APP_VERSION, PARENT_IDLE_MS, BEIAN_NO } = require('./config');
+const { CLOUD_ENV, APP_VERSION, BEIAN_NO } = require('./config');
 const s = require('./utils/storage');
-const D = require('./utils/domain');
 const session = require('./utils/parent-session');
 
 App({
@@ -19,8 +18,7 @@ App({
     beianNo: BEIAN_NO      // 备案号（关于页底部展示；备案完成后在 config.js 填入）
   },
 
-  // 最近一次用户交互时刻（毫秒）。用于「连续 15 分钟无操作自动回到展示模式」（R10）。
-  // 0 表示尚未进入家长模式 / 无交互记录。
+  // 兼容保留（R10.1 起空闲自动退出已移除；session.adopt 仍会写入，无消费方）
   lastActive: 0,
 
   onLaunch() {
@@ -38,8 +36,6 @@ App({
     setUseCloud(this.globalData.useCloud);
     this.registerPrivacy();
     this.loginPromise = this.login();
-    // 每 10s 巡检一次空闲计时：家长模式下连续 15 分钟无交互则自动回到展示模式（R10）
-    this._idleTimer = setInterval(() => this.tickIdle(), 10 * 1000);
   },
 
   // 静默登录：云端按 OPENID 查重/建号；本地兜底生成匿名身份。
@@ -78,7 +74,7 @@ App({
     if (!startInParent) return;
     try {
       const res = await callApi('unlockParent', { silent: true });
-      // 令牌签发收口到家长会话（写 token/expire/mode + 重置空闲基准 + syncMode，ADR-0001）
+      // 令牌签发收口到家长会话（写 token/expire/mode + syncMode，ADR-0001）
       session.adopt(res, this);   // onLaunch 期显式传 this，避免 getApp() 时序不确定
     } catch (e) {
       // 静默解锁失败绝不应阻断启动：回退展示模式即可，用户仍可手动 PIN 进入。
@@ -86,18 +82,9 @@ App({
     }
   },
 
-  // 任意用户交互调用：刷新空闲计时基准（由各页根 view 的 bindtap="onAppTouch" 触发）
-  touch() { this.lastActive = Date.now(); },
-
-  // 每 10s 巡检：家长模式下连续 15 分钟无交互 → 自动回到展示模式（R10）
-  tickIdle() {
-    const g = this.globalData;
-    if (g.mode !== 'parent' || !g.parentToken) return;
-    if (D.isIdleExpired(this.lastActive, Date.now(), PARENT_IDLE_MS)) {
-      this.clearParent();
-      wx.showToast({ title: '家长模式已自动关闭', icon: 'none' });
-    }
-  },
+  // 任意用户交互调用（各页根 view 的 bindtap="onAppTouch" 触发）。
+  // R10.1：空闲自动退出已移除（家长模式默认开启、仅手动关闭），此钩子保留为兼容空操作。
+  touch() {},
 
   onHide() {
     // 不再在每次 onHide 直接清空家长模式：wx.chooseMedia 调用系统相机/相册等原生能力
@@ -108,13 +95,12 @@ App({
   onShow() {
     const g = this.globalData;
     if (g.parentTokenExpire && Date.now() > g.parentTokenExpire) {
-      this.clearParent();           // 令牌自然过期（静默解锁签发的也是 15 分钟）
+      this.clearParent();           // 令牌自然过期（现为 1 年长效，正常使用不会触发）
     }
-    this.lastActive = Date.now();   // 回到前台视为一次交互，重置空闲计时
     this.globalData._hiddenAt = 0;
   },
 
-  // 广播当前 mode 给所有已渲染页面：覆盖「tickIdle 跨页即时态」等场景，
+  // 广播当前 mode 给所有已渲染页面：家长模式开启/关闭后即时反映到各页 UI，
   // 页面 onShow 也会按 globalData 再次刷新，这里保证后台巡检触发的回退能即时反映到 UI。
   syncMode() {
     const pages = (typeof getCurrentPages === 'function') ? getCurrentPages() : [];

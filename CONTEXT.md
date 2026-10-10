@@ -46,7 +46,7 @@ miniprogram/            小程序前端
     tasks.js            纯逻辑：任务可见性/优先级/分组/标签字典
     pets.js             纯逻辑：宠物物种/阶段/命名/心情衰减/互动统计
     feed.js             纯展示：动态列表时间/分组文案
-    seed.js             开箱预置数据（3 任务 + 2 奖励），云端 lib/seed.js 的镜像
+    seed.js             开箱预置数据（8 任务 + 8 奖励，任务均含 praise，生效日期固定 2026-01-01），云端 lib/seed.js 的镜像
     storage.js          本地存储键名表 KEYS + read/write/remove/nextId
     tabbar.js           自定义 tabBar 显隐「派生」控制器
     icons.js            emoji 图标候选集（任务/奖励各 6 类 × 24）
@@ -85,6 +85,8 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 | **对号 / dayAllDone** | 日历某日右上角勾：「当日**所有可见任务**都已完成」才为真；无可见任务 → false | `tasks.js#dayAllDone` |
 | **奖励 / reward** | 用星星兑换的条目。`category` 有 `reward`/`punish`（惩罚）两种文案口径 | `rewards` |
 | **限次 / resetAfterRedeem** | `true`=可反复兑换（只受余额约束）；`false`=每位孩子**仅一次**（靠「是否已兑换过」把关）。**奖励无库存概念** | `domain.js#redeemBlockReason` ↔ `lib/redeemCore.js` |
+| **任务类型 / type** | 枚举 `study`(学习)/`life`(生活)/`sport`(运动)/`growth`(成长)；旧 `habit`/`chore` 已弃用（v1.0.8）。**正面反馈 / praise** 任务新增字符串字段（打卡后宠物气泡展示，空则默认文案） | `utils/tasks.js#TYPE_OPTIONS`、本地/云端 `taskCRUD`、`seed.js` |
+| **撤销契约（v1.0.8）** | `getDashboard` 现透出：`checkIns[].id`（撤销打卡用）、限次已兑换奖励 `rewards[].redeemId`（取消兑换用）。首页据此复用 `feedCRUD.undoCheckIn`/`undoRedeem`（均 `'token'`） | `services/local.js#getDashboard` ↔ `getDashboard/index.js` |
 | **动态 / feed** | 打卡 + 兑换的聚合流水列表（跨全部宝宝）。**故意不过滤 `deleted`**，历史记录要能显示已删条目名 | `feedCRUD op=list` |
 | **撤销 / undo** | 撤销打卡（扣回星星、重算连续、删记录）或取消兑换（返还星星、恢复限次）。反向流水 `*_undo` 只作审计，**不在动态展示** | `feedCRUD op=undoCheckIn/undoRedeem` |
 | **宠物 / pet** | 每宝宝**同时最多 1 只**，`per-child` 隔离。放生 = 软删 `released:true`，可重新领养 | `pets` 集合 |
@@ -97,7 +99,7 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 | **抚摸 / stroke** | **免费·免家长令牌**（孩子也能玩）→ +6 心情，不扣星星、不写流水 | `petCRUD op=stroke` |
 | **家长模式 / parent mode** | 可写状态。`mode: 'parent'｜'display'`，靠 `parentToken` 支撑 | `app.js` |
 | **展示模式 / display** | 只读状态（默认）。孩子视角 | `app.js` |
-| **R10** | 需求编号：启动即家长模式 + 15 分钟无操作自动回退。本地层已实现；云端层顺延 | `app.js#maybeAutoUnlock/tickIdle` |
+| **R10 / R10.1** | R10=启动即家长模式（本地层已实现，云端层顺延）；R10.1（2026-10-10）=取消 15 分钟空闲自动回退，家长模式默认开启、仅手动关闭（锁图标），令牌 1 年长效（`config.PARENT_TOKEN_TTL_MS`） | `app.js#maybeAutoUnlock` |
 
 ### 3.2 工程术语
 
@@ -159,8 +161,8 @@ docs/                   需求·设计·方案·计划·隐私·发布（PRD / P
 2. **家长令牌**：云端为**无状态 HMAC-SHA256**（`base64url({openid,expireAt}) + '.' + sig`），密钥 `XY_TOKEN_SECRET`。因 13 个云函数内存不共享，**不可用服务端 Map**。
 3. **模式态**：`mode` 与 `parentToken` 存内存（`globalData`），不落库。
    - `onHide` **不清令牌**（`wx.chooseMedia` 等原生能力同样触发 onHide，清了会导致选图回来令牌失效），只记 `_hiddenAt`。
-   - `onShow` 检查 `parentTokenExpire`；`tickIdle` 每 10s 巡检 15 分钟空闲。
-   - **seam 收拢（2026-10-08 实施落地，ADR-0001）**：token 注入与恢复统一在 `utils/parent-session.js`。页面**不传 `parentToken`**（`pages/` 下出现该字符串即为回归，`__tests__/session.test.js` 守卫断言）；`callApi` 按 `utils/ops.js` 单一来源中的豁免标记自动注入（fail-safe 方向：公开/本地独占免令牌，其余一律注入）；`TOKEN_INVALID` 统一走「弹 PIN 重解锁 → 重试原操作一次」，本地云端同路径，**不得改为静默恢复**（会架空 R10 空闲保护）。恢复 UI 复用隐私授权先例（seam 存延续点 → 栈顶页实现 `onReauthNeed` 弹 PIN）。覆盖：**五个 tab 页全覆盖**（2026-10-08 补齐 tasks/pet——二页无主动解锁入口，pin-pad 仅服务恢复；无忘记 PIN 入口，自救走首页/我页；结构守卫见 session.test.js）。解锁签发唯一收口 = `session.adopt(res)`。
+   - `onShow` 检查 `parentTokenExpire`（R10.1 起令牌 1 年长效，正常使用不触发）；**空闲自动退出已移除**（R10.1，2026-10-10），退出仅靠手动锁图标。
+   - **seam 收拢（2026-10-08 实施落地，ADR-0001）**：token 注入与恢复统一在 `utils/parent-session.js`。页面**不传 `parentToken`**（`pages/` 下出现该字符串即为回归，`__tests__/session.test.js` 守卫断言）；`callApi` 按 `utils/ops.js` 单一来源中的豁免标记自动注入（fail-safe 方向：公开/本地独占免令牌，其余一律注入）；`TOKEN_INVALID` 统一走「弹 PIN 重解锁 → 重试原操作一次」，本地云端同路径，**不得改为静默恢复**（避免无感自愈掩盖会话异常）。恢复 UI 复用隐私授权先例（seam 存延续点 → 栈顶页实现 `onReauthNeed` 弹 PIN）。覆盖：**五个 tab 页全覆盖**（2026-10-08 补齐 tasks/pet——二页无主动解锁入口，pin-pad 仅服务恢复；无忘记 PIN 入口，自救走首页/我页；结构守卫见 session.test.js）。解锁签发唯一收口 = `session.adopt(res)`。
 
 - **家长 PIN 闸 UI 方法收拢（2026-10-09 Phase B）**：五页的 `onPinClose` / `onReauthNeed` / `onPinComplete`（home/mine 外加 `onPinForgot`）与 `pinAttempt` 复位 hack 已抽离到 `behaviors/pin-reauth.js`（薄壳）+ `utils/pin-reauth.js`（可测纯函数），五页通过 `behaviors:[require('../../behaviors/pin-reauth')]` 接入；wxml 的 `pin-pad` 绑定（`onPinComplete`/`onPinClose`/`onPinForgot`）无需改动。守卫见 `__tests__/pin-behavior.test.js`（页面不得本地定义这些方法）+ `__tests__/pin-reauth.test.js`（纯函数逻辑）。
 

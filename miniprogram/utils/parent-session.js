@@ -8,8 +8,9 @@
 //   ④ isPublic / getToken    —— 豁免表与当前令牌读取
 //
 // 【为什么不静默恢复】本地层虽有 unlockParent({silent:true}) 免 PIN 解锁（R10，设备即信任根），
-// 但它仅限启动时（app.maybeAutoUnlock）。若 TOKEN_INVALID 也静默重试，R10 的 15 分钟空闲
-// 保护会被架空——被退出后随手一操作又无感回到家长模式。故恢复一律弹 PIN（本地/云端同路径）。
+// 但它仅限启动时（app.maybeAutoUnlock）。运行期遇到 TOKEN_INVALID 一律弹 PIN 让用户显式确认
+// （本地/云端同路径），避免无感自愈掩盖真实会话问题（R10.1 起无空闲自动退出，失效仅源于
+// 令牌过期/换号等异常，更需要用户知情）。
 //
 // 【UI 边界】本 module 不碰任何 UI：恢复弹层由栈顶页实现 onReauthNeed 后自己弹 pin-pad
 // （与 app.js 隐私授权的 emitPrivacyNeed 先例同构）。未实现该方法的页面（tasks/pet）取不到
@@ -52,7 +53,7 @@ function adopt(res, app) {
   a.globalData.parentToken = res.parentToken;
   a.globalData.parentTokenExpire = res.expireAt || 0;
   a.globalData.mode = 'parent';
-  a.lastActive = Date.now();          // 重置 R10 空闲计时基准
+  a.lastActive = Date.now();          // 兼容保留（R10.1 起无空闲消费方）
   if (typeof a.syncMode === 'function') a.syncMode();   // 广播 mode 给已渲染页面
 }
 

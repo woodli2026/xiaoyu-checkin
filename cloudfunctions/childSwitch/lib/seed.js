@@ -1,4 +1,4 @@
-// cloudfunctions/lib/seed.js —— 新账号「开箱预置数据」（3 个任务 + 2 个奖励）
+// cloudfunctions/lib/seed.js —— 新账号「开箱预置数据」（8 个任务 + 8 个奖励）
 //
 // 【设计说明 / 对 PRD 的偏离 #7】
 // PRD 未规定初始任务与奖励（原实现为新账号空列表，需家长手建后才能打卡验收）。
@@ -11,6 +11,9 @@
 // 每日重复规则（任务每天都需要打卡）
 const DAILY = { enabled: true, type: 'day', interval: 1, weekdays: [] };
 
+// 种子生效日期：固定 2026-01-01（用户指定，不再随建号日变化）
+const SEED_START_DATE = '2026-01-01';
+
 function cloneDaily() {
   return { enabled: DAILY.enabled, type: DAILY.type, interval: DAILY.interval, weekdays: [] };
 }
@@ -22,10 +25,11 @@ function taskDoc(o) {
     title: o.title,
     type: o.type,
     icon: o.icon,
-    date: o.date,                       // 起始日 = 建号当日，配合每日重复即当天可见
+    date: SEED_START_DATE,              // 生效日期固定 2026-01-01（用户指定；o.date 入参保留向后兼容但不再使用）
     repeat: cloneDaily(),
     score: o.score,
     priority: o.priority,
+    praise: o.praise || '',
     createdAt: o.now,
     deleted: false
   };
@@ -39,32 +43,46 @@ function rewardDoc(o) {
     icon: o.icon,
     category: 'reward',                 // 均为「奖励」类（惩罚类留给家长自建）
     resetAfterRedeem: !!o.resetAfterRedeem,  // true=可反复兑换；false=每位孩子仅一次
+    praise: o.praise || '',             // 兑换后宠物说的正面反馈
     cost: o.cost,
     createdAt: o.now,
     deleted: false
   };
 }
 
-// 3 个任务：覆盖 高/中/低 三档优先级与 1/2/3 星，便于验收星星累加与旗子展示
+// 8 个任务：含风趣幽默的正面反馈（praise），打卡后宠物气泡即展示；星星合计 19
+// 类型覆盖 study/life/sport/growth 四类；图标均在 utils/icons.js 任务候选集内
 function seedTasks(o) {
   const base = { ownerId: o.ownerId, childId: o.childId, date: o.date, now: o.now };
   return [
-    taskDoc(Object.assign({}, base, { title: '完成作业', type: 'habit', icon: '✏️', score: 3, priority: 'high' })),
-    taskDoc(Object.assign({}, base, { title: '课外阅读 30 分钟', type: 'habit', icon: '📚', score: 2, priority: 'mid' })),
-    taskDoc(Object.assign({}, base, { title: '户外运动', type: 'habit', icon: '🏃', score: 2, priority: 'low' }))
+    taskDoc(Object.assign({}, base, { title: '作业闪电侠', type: 'study', icon: '📝', score: 3, priority: 'high', praise: '这速度，作业以为自己被施了加速咒！' })),
+    taskDoc(Object.assign({}, base, { title: '错题终结者', type: 'study', icon: '🎯', score: 2, priority: 'mid', praise: '错题被你一锅端，它们下次不敢来啦！' })),
+    taskDoc(Object.assign({}, base, { title: '阅读小书虫', type: 'study', icon: '📖', score: 2, priority: 'mid', praise: '书页都被你翻出感情啦，故事说你最懂它！' })),
+    taskDoc(Object.assign({}, base, { title: '早起小闹钟', type: 'life', icon: '⏰', score: 3, priority: 'high', praise: '今天的太阳，是被你叫醒的吧？' })),
+    taskDoc(Object.assign({}, base, { title: '早睡小夜灯', type: 'life', icon: '🌙', score: 2, priority: 'mid', praise: '你一躺下，月亮都安心地打了个哈欠。' })),
+    taskDoc(Object.assign({}, base, { title: '收纳魔法师', type: 'life', icon: '🧺', score: 2, priority: 'mid', praise: '东西各回各家，房间开心得直转圈圈！' })),
+    taskDoc(Object.assign({}, base, { title: '运动健将', type: 'sport', icon: '🏃', score: 3, priority: 'high', praise: '年轻人，我见你骨骼清奇，今天又突破瓶颈了！' })),
+    taskDoc(Object.assign({}, base, { title: '家务小搭档', type: 'growth', icon: '🧹', score: 2, priority: 'mid', praise: '有你搭把手，家务活儿都变轻快了！' }))
   ];
 }
 
-// 2 个奖励：覆盖「可反复兑换」与「每位孩子仅一次」两种行为（已无库存概念）
+// 8 个奖励：6 条不限次（即时光/心理奖励）+ 2 条仅一次（攒星大奖），星星 6–60 星梯度定价
+// 顺序由用户指定；图标均在 utils/icons.js 奖励候选集内；praise=兑换后宠物气泡文案
 function seedRewards(o) {
   const base = { ownerId: o.ownerId, childId: o.childId, now: o.now };
   return [
-    rewardDoc(Object.assign({}, base, { title: '自由玩耍 20 分钟', icon: '🎈', cost: 8, resetAfterRedeem: true })),
-    rewardDoc(Object.assign({}, base, { title: '买一本新书', icon: '📚', cost: 30, resetAfterRedeem: false }))
+    rewardDoc(Object.assign({}, base, { title: '一支冰淇淋',     icon: '🍦', cost: 6,  resetAfterRedeem: true,  praise: '甜蜜补给到账，心情甜度爆表！' })),
+    rewardDoc(Object.assign({}, base, { title: '今晚的动画片',   icon: '📱', cost: 10, resetAfterRedeem: true,  praise: '动画时间开启，尽情享受吧！' })),
+    rewardDoc(Object.assign({}, base, { title: '亲子桌游一局',   icon: '🎲', cost: 12, resetAfterRedeem: true,  praise: '棋盘已就位，来一局巅峰对决！' })),
+    rewardDoc(Object.assign({}, base, { title: '家庭电影夜',     icon: '🎬', cost: 18, resetAfterRedeem: true,  praise: '爆米花备好，电影之夜开始啦！' })),
+    rewardDoc(Object.assign({}, base, { title: '心愿盲盒一次',   icon: '🎁', cost: 25, resetAfterRedeem: false, praise: '神秘惊喜已发货，拆盒请签收！' })),
+    rewardDoc(Object.assign({}, base, { title: '全家出游一次',   icon: '🏖️', cost: 60, resetAfterRedeem: false, praise: '阳光和快乐已打包，出发！' })),
+    rewardDoc(Object.assign({}, base, { title: '三明治拥抱',     icon: '🐻', cost: 5,  resetAfterRedeem: true,  praise: '一个超大号拥抱正在派送中！' })),
+    rewardDoc(Object.assign({}, base, { title: '小鬼当家',       icon: '🎭', cost: 15, resetAfterRedeem: true,  praise: '今天你说了算，小主人！' }))
   ];
 }
 
-const SEED_TASK_COUNT = 3;
-const SEED_REWARD_COUNT = 2;
+const SEED_TASK_COUNT = 8;
+const SEED_REWARD_COUNT = 8;
 
 module.exports = { DAILY, seedTasks, seedRewards, SEED_TASK_COUNT, SEED_REWARD_COUNT };

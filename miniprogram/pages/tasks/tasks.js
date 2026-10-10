@@ -7,7 +7,7 @@ const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 function todayStr() { return D.ymd(new Date()); }
 function emptyTaskForm(childId) {
   return {
-    childId, title: '', type: 'habit', icon: '✏️',
+    childId, title: '', type: 'study', icon: '✏️',
     dateEnabled: true, date: todayStr(),
     repeatEnabled: false, repeatType: 'day', interval: 1,
     weekdays: [false, false, false, false, false, false, false],
@@ -15,7 +15,7 @@ function emptyTaskForm(childId) {
   };
 }
 function emptyRewardForm(childId) {
-  return { childId, title: '', icon: '🎁', category: 'reward', resetAfterRedeem: true, cost: 5 };
+  return { childId, title: '', icon: '🎁', category: 'reward', resetAfterRedeem: true, cost: 5, praise: '' };
 }
 Page({
   behaviors: [require('../../behaviors/pin-reauth')],
@@ -94,6 +94,7 @@ Page({
       showEditor: true, editorKind: 'task', editing: true,
       form: {
         _id: t._id, childId: t.childId, title: t.title, type: t.type, icon: t.icon,
+        praise: t.praise || '',
         dateEnabled: !!t.date, date: t.date || todayStr(),
         repeatEnabled: !!r.enabled, repeatType: r.type || 'day',
         interval: r.interval || 1,
@@ -111,7 +112,7 @@ Page({
       form: {
         _id: r._id, childId: r.childId, title: r.title, icon: r.icon,
         category: r.category, resetAfterRedeem: !!r.resetAfterRedeem,
-        cost: r.cost
+        cost: r.cost, praise: r.praise || ''
       }
     });
   },
@@ -154,6 +155,7 @@ Page({
         if (!(score >= 1) || score > 99) { wx.showToast({ title: '请填写 1–99 的星星数', icon: 'none' }); return; }
         const payload = {
           childId: f.childId, title: f.title, type: f.type, icon: f.icon,
+          praise: f.praise || '',
           date: f.dateEnabled ? f.date : todayStr(),
           repeat: {
             enabled: !!f.repeatEnabled, type: f.repeatType,
@@ -173,7 +175,7 @@ Page({
         if (!(cost >= 1) || cost > 99) { wx.showToast({ title: '请填写 1–99 的星星数', icon: 'none' }); return; }
         const payload = {
           childId: f.childId, title: f.title, icon: f.icon, category: f.category,
-          resetAfterRedeem: !!f.resetAfterRedeem, cost
+          resetAfterRedeem: !!f.resetAfterRedeem, praise: f.praise || '', cost
         };
         if (this.data.editing) {
           payload.id = f._id;
