@@ -135,8 +135,34 @@
 <!-- 隐私协议（首次启动）：公共组件 privacy-sheet（mine 页选图就地授权同款，见 components/privacy-sheet） -->
 <privacy-sheet show="{{showPrivacy}}" bindagreed="agreePrivacy" />
 
-<!-- 撒花层 -->
+<!-- 宠物正面反馈气泡（打卡后弹出，驻留 3 秒或手动关闭；黑色蒙布突出，说话在上、宠物在下） -->
+<view wx:if="{{showPraise}}" class="praise-layer" catchtap="closePraise">
+  <view class="praise-card" catchtap="noop">
+    <view class="praise-bubble" style="{{bubbleStyle}}">
+      <view class="pb-face">
+        <view class="pb-eye e1"></view>
+        <view class="pb-eye e2"></view>
+        <view class="pb-blush l"></view>
+        <view class="pb-blush r"></view>
+        <view class="pb-mouth"></view>
+        <text class="pb-heart">❤️</text>
+      </view>
+      <text class="pb-deco d1">🎵</text>
+      <text class="pb-deco d2">✨</text>
+      <text class="pb-deco d3">💖</text>
+      <view class="pb-text">{{praiseText}}</view>
+    </view>
+    <view class="praise-pet">
+      <image wx:if="{{petImage}}" class="praise-img" src="{{petImage}}" mode="aspectFit" />
+      <text wx:else class="praise-emoji">{{petEmoji}}</text>
+    </view>
+    <view class="praise-close" catchtap="closePraise">×</view>
+  </view>
+</view>
+
+<!-- 礼花筒喷射层（置于宠物之上，避免被蒙布/宠物遮住看不清） -->
 <view class="confetti-layer">
-  <view wx:for="{{confetti}}" wx:key="id" class="confetti-piece"
-        style="left:{{item.left}}%;background:{{item.color}};animation-delay:{{item.delay}}s"></view>
+  <view wx:if="{{confettiFlash}}" class="confetti-flash"></view>
+  <view wx:for="{{confetti}}" wx:key="id" class="confetti-piece {{item.shape}}"
+        style="left:{{item.x}}%;--tx:{{item.tx}}rpx;--ty:{{item.ty}}rpx;--rot:{{item.rot}}deg;background:{{item.color}};animation-delay:{{item.delay}}s"></view>
 </view>

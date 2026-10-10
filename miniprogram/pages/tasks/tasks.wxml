@@ -82,6 +82,13 @@
                 data-field="type" data-value="{{item.value}}" bindtap="onSelect">{{item.label}}</view>
         </view>
       </view>
+
+      <view class="field">
+        <text class="lab">正面反馈</text>
+        <textarea class="inp area" placeholder="打卡完成后给小朋友的鼓励，如：今天真棒！"
+                  value="{{form.praise}}" data-field="praise" bindinput="onInput" maxlength="60"></textarea>
+        <text class="field-tip">留空则默认显示「恭喜完成任务，你是最棒的！」</text>
+      </view>
     </block>
 
     <view class="field">
@@ -141,6 +148,13 @@
     </block>
 
     <block wx:else>
+      <view class="field">
+        <text class="lab">正面反馈</text>
+        <textarea class="inp area" placeholder="兑换奖励后给小朋友的鼓励，如：说到做到，真棒！"
+                  value="{{form.praise}}" data-field="praise" bindinput="onInput" maxlength="60"></textarea>
+        <text class="field-tip">留空则默认显示「恭喜完成任务，你是最棒的！」</text>
+      </view>
+
       <view class="field">
         <text class="lab">分类</text>
         <view class="seg">

@@ -20,6 +20,7 @@ exports.main = async (event) => {
       title: String(p.title).trim(), icon: p.icon || '🎁',
       category: p.category || 'reward',
       resetAfterRedeem: !!p.resetAfterRedeem,   // true=可反复兑换；false=每位孩子仅一次
+      praise: p.praise || '',                    // 兑换后宠物说的正面反馈（空则用默认文案）
       cost: Number(p.cost) || 5,
       createdAt: Date.now(), deleted: false
     };
@@ -41,6 +42,7 @@ exports.main = async (event) => {
     if (p.icon != null) patch.icon = p.icon;
     if (p.category != null) patch.category = p.category;
     if (p.resetAfterRedeem != null) patch.resetAfterRedeem = !!p.resetAfterRedeem;
+    if (p.praise != null) patch.praise = p.praise;
     if (p.cost != null) {
       if (!(Number(p.cost) >= 1)) return fail('INVALID', '星星数至少为 1');
       patch.cost = Number(p.cost);

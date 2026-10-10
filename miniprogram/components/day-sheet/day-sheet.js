@@ -19,8 +19,11 @@ Component({
     onMask() { this.triggerEvent('close'); },
     onPick(e) {
       const id = e.currentTarget.dataset.id;
-      const item = (this.data.todo || []).find(t => t.taskId === id);
-      this.triggerEvent('pick', { taskId: id, task: item });
+      const todo = this.data.todo || [];
+      const done = this.data.done || [];
+      const inTodo = todo.find(t => t.taskId === id);
+      const inDone = done.find(t => t.taskId === id);
+      this.triggerEvent('pick', { taskId: id, task: inTodo || inDone, done: !!inDone });
     },
     onScroll(e) { this.triggerEvent('scroll', { scrollTop: e.detail.scrollTop }); },
     close() { this.triggerEvent('close'); }

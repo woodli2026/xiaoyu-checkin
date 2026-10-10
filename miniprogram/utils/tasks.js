@@ -42,10 +42,12 @@ const PRIORITY = {
 };
 function priorityInfo(p) { return PRIORITY[p] || PRIORITY.none; }
 
-const TYPE_LABEL = { habit: '习惯', chore: '家务' };
+const TYPE_LABEL = { study: '学习', life: '生活', sport: '运动', growth: '成长' };
 const TYPE_OPTIONS = [
-  { value: 'habit', label: '习惯' },
-  { value: 'chore', label: '家务' }
+  { value: 'study', label: '学习' },
+  { value: 'life', label: '生活' },
+  { value: 'sport', label: '运动' },
+  { value: 'growth', label: '成长' }
 ];
 const PRIORITY_OPTIONS = [
   { value: 'high', label: '高优先级', short: '高' },

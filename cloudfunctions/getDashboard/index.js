@@ -33,7 +33,9 @@ exports.main = async (event) => {
   // 奖励补「该孩子是否已兑换过」：限次奖励（resetAfterRedeem=false）只有一次机会，
   // 这个标志在界面上取代了原「库存」的角色。
   const redeemedIds = new Set((redRes.data || []).map(r => r.rewardId));
-  const rewards = rewardsRes.data.map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id) }));
+  const redMap = {};
+  (redRes.data || []).forEach(r => { redMap[r.rewardId] = r._id; });
+  const rewards = rewardsRes.data.map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id), redeemId: redMap[r.rewardId] || null }));
 
   const doneToday = new Set(checkIns.filter(c => c.date === today).map(c => c.taskId));
   const todayTasks = tasks
@@ -57,7 +59,7 @@ exports.main = async (event) => {
     todayTasks,
     tasks,
     rewards,
-    checkIns: checkIns.map(c => ({ taskId: c.taskId, date: c.date })),
+    checkIns: checkRes.data.map(c => ({ id: c._id, taskId: c.taskId, date: c.date })),
     child: {
       _id: child._id, name: child.name, avatar: child.avatar, photo: child.photo || '',
       gender: child.gender || '', birthday: child.birthday || '', allergens: child.allergens || ''

@@ -157,7 +157,7 @@ async function unlockParent({ pin, silent }) {
   if (!silent) {
     if (hashPin(pin) !== user.pinHash) return fail('PIN_INVALID', 'PIN 不正确');
   }
-  const t = D.issueToken(CFG.PARENT_IDLE_MS || 15 * 60 * 1000);
+  const t = D.issueToken(CFG.PARENT_TOKEN_TTL_MS || 365 * 24 * 3600 * 1000);
   s.write(s.KEYS.token, { token: t.token, expireAt: t.expireAt, openid: user.openid });
   return ok({ parentToken: t.token, expireAt: t.expireAt });
 }
@@ -203,9 +203,11 @@ async function getDashboard({ childId }) {
   const redeemedIds = new Set(
     allRedemptions().filter(r => r.childId === child._id).map(r => r.rewardId)
   );
+  const redMap = {};
+  allRedemptions().filter(r => r.childId === child._id).forEach(r => { redMap[r.rewardId] = r._id; });
   const rewards = allRewards().filter(r => r.childId === child._id && !r.deleted)
     .sort((a, b) => a.createdAt - b.createdAt)
-    .map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id) }));
+    .map(r => Object.assign({}, r, { redeemed: redeemedIds.has(r._id), redeemId: redMap[r._id] || null }));
   const checkIns = allCheckIns().filter(c => c.childId === child._id);
   const doneToday = new Set(checkIns.filter(c => c.date === today).map(c => c.taskId));
 
@@ -232,7 +234,7 @@ async function getDashboard({ childId }) {
     todayTasks,
     tasks,
     rewards,
-    checkIns: checkIns.map(c => ({ taskId: c.taskId, date: c.date })),
+    checkIns: checkIns.map(c => ({ id: c._id, taskId: c.taskId, date: c.date })),
     child: {
       _id: child._id, name: child.name, avatar: child.avatar, photo: child.photo || '',
       gender: child.gender || '', birthday: child.birthday || '', allergens: child.allergens || ''
@@ -321,10 +323,11 @@ async function taskCRUD({ op, parentToken, payload }) {
     if (!(Number(p.score) >= 1)) return fail('INVALID', '星星数至少为 1');
     const task = {
       _id: s.nextId('t'), ownerId: user._id, childId: p.childId,
-      title: String(p.title).trim(), type: p.type || 'habit', icon: p.icon || '✏️',
+      title: String(p.title).trim(), type: p.type || 'study', icon: p.icon || '✏️',
       date: p.date || D.ymd(new Date()),
       repeat: p.repeat || { enabled: false, type: 'day', interval: 1, weekdays: [] },
       score: Number(p.score) || 1, priority: p.priority || 'none',
+      praise: p.praise || '',
       createdAt: Date.now(), deleted: false
     };
     tasks.push(task);
@@ -342,6 +345,7 @@ async function taskCRUD({ op, parentToken, payload }) {
     if (p.date != null) task.date = p.date;
     if (p.repeat != null) task.repeat = p.repeat;
     if (p.priority != null) task.priority = p.priority;
+    if (p.praise != null) task.praise = p.praise;
     if (!task.title) return fail('INVALID', '请填写标题');
     if (!(task.score >= 1)) return fail('INVALID', '星星数至少为 1');
     saveTasks(tasks);
@@ -372,6 +376,7 @@ async function rewardCRUD({ op, parentToken, payload }) {
       title: String(p.title).trim(), icon: p.icon || '🎁',
       category: p.category || 'reward',
       resetAfterRedeem: !!p.resetAfterRedeem,   // true=可反复兑换；false=每位孩子仅一次
+      praise: p.praise || '',                    // 兑换后宠物说的正面反馈（空则用默认文案）
       cost: Number(p.cost) || 5,
       createdAt: Date.now(), deleted: false
     };
@@ -387,6 +392,7 @@ async function rewardCRUD({ op, parentToken, payload }) {
     if (p.icon != null) reward.icon = p.icon;
     if (p.category != null) reward.category = p.category;
     if (p.resetAfterRedeem != null) reward.resetAfterRedeem = !!p.resetAfterRedeem;
+    if (p.praise != null) reward.praise = p.praise;
     if (p.cost != null) reward.cost = Number(p.cost);
     if (!reward.title) return fail('INVALID', '请填写标题');
     if (!(reward.cost >= 1)) return fail('INVALID', '星星数至少为 1');

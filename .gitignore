@@ -6,6 +6,7 @@ node_modules/
 
 # 项目文档统一迁入 docs/，按用户要求不再提交 git（含 README-小程序.md 中的真实云密钥 XY_TOKEN_SECRET / XY_PIN_SALT）
 docs/
+assets/
 
 # 自动化截图产物
 tools/shots/

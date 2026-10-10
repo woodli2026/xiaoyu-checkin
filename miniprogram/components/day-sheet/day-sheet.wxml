@@ -22,10 +22,12 @@
 
       <view wx:if="{{todo.length > 0 && done.length > 0}}" class="ds-sep"></view>
 
-      <view wx:for="{{done}}" wx:key="taskId" class="ds-row ds-done">
+      <view wx:for="{{done}}" wx:key="taskId" class="ds-row ds-done"
+            data-id="{{item.taskId}}" catchtap="onPick">
         <text class="ds-icon">{{item.icon}}</text>
         <view class="ds-main">
           <text class="ds-name">{{item.title}}</text>
+          <text wx:if="{{item.praise}}" class="ds-praise">💬 {{item.praise}}</text>
           <text class="ds-sub">+{{item.score}}⭐</text>
         </view>
         <view class="chk ok">✓</view>

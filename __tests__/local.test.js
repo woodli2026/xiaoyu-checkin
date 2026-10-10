@@ -427,9 +427,10 @@ test('R10：本地层 unlockParent 支持 silent 静默解锁（免 PIN）', asy
   const silent = await local.unlockParent({ silent: true, pin: '000000' });
   assert.strictEqual(silent.ok, true);
   assert.ok(silent.parentToken);
-  // 令牌有效期为 PARENT_IDLE_MS（15 分钟），容差 ±2 秒
+  // 令牌有效期为 PARENT_TOKEN_TTL_MS（R10.1：1 年长效，无空闲自动退出），容差 ±2 秒
   const ttl = silent.expireAt - Date.now();
-  assert.ok(ttl > 14 * 60 * 1000 && ttl <= 15 * 60 * 1000 + 2000, 'silent 令牌 TTL 应为 15 分钟，实际 ' + ttl);
+  const year = CFG.PARENT_TOKEN_TTL_MS;
+  assert.ok(ttl > year - 2000 && ttl <= year + 2000, 'silent 令牌 TTL 应为 ' + year + 'ms，实际 ' + ttl);
 
   // 3. 非 silent 仍需正确 PIN（silent 之外 PIN 校验一切照旧）
   const wrongPin = await local.unlockParent({ pin: '000000' });

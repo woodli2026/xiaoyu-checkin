@@ -478,13 +478,115 @@ view, text, button, input, scroll-view { box-sizing: border-box; }
 .stagger > view:nth-child(4) { animation-delay: .15s; }
 .stagger > view:nth-child(5) { animation-delay: .2s; }
 
-/* 撒花层 */
+/* 撒花层（礼花筒） */
 .confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
 .confetti-piece {
-  position: absolute; top: -20rpx; width: 19rpx; height: 27rpx; border-radius: 6rpx;
-  animation: fall 1.6s ease-in forwards;
+  position: absolute; bottom: 12%; width: 18rpx; height: 26rpx; border-radius: 6rpx;
+  transform: translate(0, 0) rotate(0); opacity: 1;
+  animation: pop 1.9s cubic-bezier(.18, .72, .3, 1) forwards;
 }
-@keyframes fall {
-  0% { transform: translateY(-20rpx) rotate(0); opacity: 1; }
-  100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+.confetti-piece.circle { border-radius: 50%; }
+.confetti-piece.ribbon { width: 10rpx; height: 34rpx; border-radius: 4rpx; }
+.confetti-piece.star {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+@keyframes pop {
+  0%   { transform: translate(0, 0) scale(.3) rotate(0); opacity: 1; }
+  72%  { opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+/* 中心高光闪（每波礼花触发一次） */
+.confetti-flash {
+  position: absolute; left: 50%; bottom: 16%;
+  width: 80rpx; height: 80rpx; margin-left: -40rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.95), rgba(255,201,60,.7) 38%, rgba(255,154,162,0) 70%);
+  animation: flash .7s ease-out forwards;
+}
+@keyframes flash {
+  0%   { transform: scale(.2); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: scale(10); opacity: 0; }
+}
+
+/* 宠物正面反馈气泡：黑色透明蒙布 + 说话在上、宠物在下 */
+.praise-layer {
+  position: fixed; inset: 0; z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .55);   /* 任务列表之上的黑色透明蒙布，突出宠物与说话内容 */
+  pointer-events: auto;
+}
+.praise-card {
+  position: relative; pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10rpx;
+  animation: praise-in .3s ease both;
+}
+/* 说话内容：笑脸对话气泡；配色由内联 --bub-* 变量按宠物品种驱动（无变量则回退默认黄） */
+.praise-bubble {
+  order: 1;
+  position: relative;
+  z-index: 0;   /* 建立层叠上下文 */
+  display: flex; flex-direction: row; align-items: center;
+  margin-bottom: 40rpx; max-width: 640rpx; padding: 30rpx 40rpx;
+  background: linear-gradient(160deg, var(--bub-a, #FFE873) 0%, var(--bub-b, #FFD226) 100%);
+  border-radius: 60rpx;
+  box-shadow: 0 16rpx 42rpx var(--bub-shadow, rgba(255, 190, 60, .45));
+  font-family: 'Yuanti SC', 'YouYuan', 'PingFang SC', sans-serif;  /* 圆体=可爱字体；无则回退系统 */
+  font-weight: 700;
+  font-size: 44rpx; color: var(--bub-ink, #6b4a12); line-height: 1.5;
+  animation: cloud-bob 2.6s ease-in-out infinite;
+}
+/* 笑脸：左侧五官（无底脸，眼睛/腮红/微笑嘴直接浮在气泡底色上） */
+.pb-face {
+  position: relative; flex: 0 0 auto;
+  width: 116rpx; height: 116rpx; margin-right: 26rpx;
+}
+.pb-eye { position: absolute; top: 36rpx; width: 16rpx; height: 24rpx; background: var(--bub-ink, #6b4a12); border-radius: 50%; }
+.pb-eye.e1 { left: 34rpx; }
+.pb-eye.e2 { right: 34rpx; }
+.pb-blush { position: absolute; top: 62rpx; width: 26rpx; height: 15rpx; background: rgba(255, 118, 140, .6); border-radius: 50%; }
+.pb-blush.l { left: 24rpx; }
+.pb-blush.r { right: 24rpx; }
+.pb-mouth {
+  position: absolute; left: 50%; bottom: 20rpx; transform: translateX(-50%);
+  width: 50rpx; height: 26rpx;
+  border-bottom: 7rpx solid var(--bub-ink, #6b4a12); border-radius: 0 0 50rpx 50rpx;
+}
+.pb-heart { position: absolute; right: 4rpx; top: 2rpx; font-size: 26rpx; }
+/* 右侧：说话文字块 */
+.pb-text { flex: 1 1 auto; text-align: left; }
+/* 气泡周围小装饰：音符 / 星星 / 爱心（emoji，避让左侧笑脸） */
+.pb-deco { position: absolute; font-size: 30rpx; pointer-events: none; }
+.pb-deco.d1 { top: -18rpx; right: 26rpx; transform: rotate(-14deg); }
+.pb-deco.d2 { top: 34%; right: -30rpx; }
+.pb-deco.d3 { bottom: -12rpx; left: -22rpx; transform: rotate(12deg); }
+/* 对话气泡：底部尾巴指向下方宠物（颜色随主题） */
+.praise-bubble::before {
+  content: ''; position: absolute; left: 50%; bottom: -16rpx; margin-left: -18rpx;
+  width: 36rpx; height: 36rpx; background: var(--bub-b, #FFD226);
+  border-radius: 10rpx; transform: rotate(45deg);
+}
+/* 宠物形象：下方，放大 */
+.praise-pet {
+  order: 2;
+  width: 340rpx; height: 340rpx;
+  display: flex; align-items: center; justify-content: center;
+}
+@keyframes cloud-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12rpx); }
+}
+.praise-img { width: 340rpx; height: 340rpx; }
+.praise-emoji { font-size: 240rpx; }
+.praise-close {
+  position: absolute; top: 0; right: 0;
+  width: 60rpx; height: 60rpx; line-height: 60rpx; text-align: center;
+  border-radius: 50%; background: #FF9AA2; color: #fff; font-size: 38rpx;
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, .2);
+}
+@keyframes praise-in {
+  0% { opacity: 0; transform: translateY(20rpx) scale(.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }

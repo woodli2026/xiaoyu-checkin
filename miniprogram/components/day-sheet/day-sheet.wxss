@@ -44,6 +44,7 @@
 .ds-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ds-name { font-size: 31rpx; color: #5A5470; }
 .ds-sub { font-size: 27rpx; font-weight: 700; color: #FFC93C; margin-top: 4rpx; }
+.ds-praise { font-size: 24rpx; color: #FF9AA2; margin-top: 6rpx; line-height: 1.4; }
 .ds-done .ds-name { color: #a9a2ba; text-decoration: line-through; }
 
 /* 圆形勾选控件 */
