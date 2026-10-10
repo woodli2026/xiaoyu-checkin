@@ -1,3 +1,4 @@
+// @ts-check
 // utils/icons.js —— 图标选择面板候选集（2026-09-29 扩版：参考微信表情面板，
 // 底部分类栏切换，每套 6 类 × 24 个 = 144 个；tabIcon 为分类栏按钮图标）
 //
@@ -69,7 +70,10 @@ const ICON_SETS = {
 
 const DEFAULT_SET = 'task';
 
-// 供组件安全取组：未知 kind 一律回退任务集
+/**
+ * 供组件安全取组：未知 kind 一律回退任务集
+ * @param {string} [kind]
+ */
 function groupsOf(kind) {
   return ICON_SETS[kind] || ICON_SETS[DEFAULT_SET];
 }

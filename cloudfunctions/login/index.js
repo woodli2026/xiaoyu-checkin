@@ -79,7 +79,7 @@ exports.main = async () => {
     const cdoc = {
       ownerId: user._id, name: '宝宝', avatar: '🧒', photo: '',
       gender: '', birthday: '', allergens: '',
-      totalStars: 0, lastCheckInDate: null, createdAt: Date.now(), deleted: false
+      totalStars: 0, createdAt: Date.now(), deleted: false
     };
     const add = await children.add({ data: cdoc });
     child = Object.assign({ _id: add._id }, cdoc);

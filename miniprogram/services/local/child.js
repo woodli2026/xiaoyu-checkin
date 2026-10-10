@@ -74,7 +74,7 @@ async function childCRUD({ op, childId, parentToken, payload }) {
       _id: s.nextId('c'), ownerId: user._id, name,
       avatar: String(p.avatar || '').trim() || '🧒', photo: p.photo != null ? String(p.photo) : '',
       gender: '', birthday: '', allergens: '',
-      totalStars: 0, lastCheckInDate: null, createdAt: Date.now(), deleted: false
+      totalStars: 0, createdAt: Date.now(), deleted: false
     }, prof.patch);
     const all = allChildren();
     all.push(child);

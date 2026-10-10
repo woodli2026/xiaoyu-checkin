@@ -1,12 +1,13 @@
 // __tests__/page-utils.test.js —— D4 页面纯函数下沉后的单测（零依赖）
-// 覆盖：日历格生成 / 月份增减 / 气泡配色 / 礼花粒子 / 宠物页 data 映射。
-// 这些原本内联在 home.js、pet.js，抽取后在此做行为级回归，避免「页面行数降了、行为悄悄变了」。
+// 覆盖：日历格生成 / 月份增减 / 气泡配色 / 礼花粒子 / 宠物页 data 映射 / 宝宝表单构造。
+// 这些原本内联在 home.js、pet.js、mine.js，抽取后在此做行为级回归，避免「页面行数降了、行为悄悄变了」。
 const test = require('node:test');
 const assert = require('node:assert');
 const cal = require('../miniprogram/utils/calendar');
 const bubble = require('../miniprogram/utils/bubble');
 const CF = require('../miniprogram/utils/confetti');
 const pp = require('../miniprogram/utils/pet-page');
+const CFORM = require('../miniprogram/utils/child-form');
 const P = require('../miniprogram/utils/pets');
 
 // 固定序列随机数（循环取值），让随机生成函数可断言
@@ -126,4 +127,41 @@ test('pet-page.petClsOf：stage 派生 s{stage}，无宠物回退 s1', () => {
   assert.strictEqual(pp.petClsOf(null), 's1');
   assert.strictEqual(pp.petClsOf({ stage: 1 }), 's1');
   assert.strictEqual(pp.petClsOf({ stage: 2 }), 's2');
+});
+
+test('child-form.emptyChildForm：空白表单（非编辑态 / 默认头像 / 全空）', () => {
+  const f = CFORM.emptyChildForm();
+  assert.strictEqual(f.editingChild, false);
+  assert.strictEqual(f.editChildId, '');
+  assert.strictEqual(f.editAvatar, '🧒');
+  assert.strictEqual(f.editName, '');
+  assert.strictEqual(f.editPhoto, '');
+  assert.strictEqual(f.editErr, '');
+  assert.deepStrictEqual(Object.keys(f).sort(), [
+    'editAllergens', 'editAvatar', 'editBirthday', 'editChildId', 'editErr',
+    'editGender', 'editName', 'editPhoto', 'editingChild'
+  ].sort(), '字段集漂移');
+});
+
+test('child-form.childFormFrom：由档案投影（编辑态 / 缺省兜底 / 键集与新增一致）', () => {
+  const f = CFORM.childFormFrom({
+    _id: 'c1', name: '小雨', avatar: '👧', photo: '/a.png',
+    gender: 'girl', birthday: '2018-05-01', allergens: '花生'
+  });
+  assert.strictEqual(f.editingChild, true);
+  assert.strictEqual(f.editChildId, 'c1');
+  assert.strictEqual(f.editName, '小雨');
+  assert.strictEqual(f.editAvatar, '👧');
+  assert.strictEqual(f.editPhoto, '/a.png');
+  assert.strictEqual(f.editGender, 'girl');
+  assert.strictEqual(f.editBirthday, '2018-05-01');
+  assert.strictEqual(f.editAllergens, '花生');
+  assert.strictEqual(f.editErr, '');
+
+  // 缺省兜底：null → 默认头像、其余空串；两态字段集必须完全一致（页面 setData 不漏键）
+  const e = CFORM.childFormFrom(null);
+  assert.strictEqual(e.editChildId, '');
+  assert.strictEqual(e.editAvatar, '🧒');
+  assert.strictEqual(e.editName, '');
+  assert.deepStrictEqual(Object.keys(e).sort(), Object.keys(CFORM.emptyChildForm()).sort());
 });

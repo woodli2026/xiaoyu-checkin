@@ -3,6 +3,7 @@ const D = require('../../utils/domain');
 const { attachTabBarSync } = require('../../utils/tabbar');
 const s = require('../../utils/storage');
 const session = require('../../utils/parent-session');
+const CF = require('../../utils/child-form');
 function modal(options) {
   return new Promise((resolve) => {
     wx.showModal(Object.assign({}, options, {
@@ -162,23 +163,14 @@ Page({
   },
   openNewChild() {
     if (!this._requireParent()) return;
-    this.setData({
-      showEditChild: true, editingChild: false, editChildId: '',
-      editName: '', editAvatar: '🧒', editPhoto: '',
-      editGender: '', editBirthday: '', editAllergens: '', editErr: ''
-    });
+    this.setData(Object.assign({ showEditChild: true }, CF.emptyChildForm()));
   },
   openChildEditor(e) {
     if (!this._requireParent()) return;
     const id = e.currentTarget.dataset.id;
     const c = (this.data.children || []).find(x => x._id === id);
     if (!c) return;
-    this.setData({
-      showEditChild: true, editingChild: true, editChildId: id,
-      editName: c.name || '', editAvatar: c.avatar || '🧒', editPhoto: c.photo || '',
-      editGender: c.gender || '', editBirthday: c.birthday || '', editAllergens: c.allergens || '',
-      editErr: ''
-    });
+    this.setData(Object.assign({ showEditChild: true }, CF.childFormFrom(c)));
   },
   closeEditChild() {
     this.setData({ showEditChild: false, editErr: '', editPhoto: '' });

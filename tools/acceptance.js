@@ -200,7 +200,7 @@ function todayStr() { return D.ymd(new Date()); }
     const children = store[s.KEYS.children] || [];
     const c2 = {
       _id: 'child-test-2', ownerId: children[0].ownerId, name: '二宝', avatar: '👧',
-      totalStars: 0, lastCheckInDate: null, createdAt: Date.now() + 1
+      totalStars: 0, createdAt: Date.now() + 1
     };
     children.push(c2);
     store[s.KEYS.children] = children;

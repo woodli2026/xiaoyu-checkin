@@ -88,7 +88,6 @@ async function login(params) {
       birthday: '',
       allergens: '',
       totalStars: 0,
-      lastCheckInDate: null,
       createdAt: Date.now(),
       deleted: false
     };

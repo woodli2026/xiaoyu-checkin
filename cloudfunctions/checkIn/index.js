@@ -28,12 +28,12 @@ exports.main = async (event) => {
     .where({ childId: child._id, taskId: event.taskId, date }).limit(1).get();
   if (dup.data.length) return fail('ALREADY_DONE', '今日已打卡');
 
-  const upd = applyCheckIn(child, task.score, date);
+  const upd = applyCheckIn(child, task.score);
   const now = Date.now();
 
   await db.runTransaction(async (t) => {
     await t.collection('children').doc(child._id).update({
-      data: { totalStars: upd.totalStars, lastCheckInDate: upd.lastCheckInDate }
+      data: { totalStars: upd.totalStars }
     });
     await t.collection('checkIns').add({
       data: { ownerId: child.ownerId, childId: child._id, taskId: event.taskId, date, score: task.score, createdAt: now }

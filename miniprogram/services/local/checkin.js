@@ -20,9 +20,8 @@ async function checkIn({ childId, taskId, date, parentToken }) {
     return fail('ALREADY_DONE', '今日已打卡');
   }
 
-  const upd = D.applyCheckIn(child, task.score, d);
+  const upd = D.applyCheckIn(child, task.score);
   child.totalStars = upd.totalStars;
-  child.lastCheckInDate = upd.lastCheckInDate;
   saveChildren(children);
 
   checkIns.push({ _id: s.nextId('ci'), childId, taskId, date: d, score: task.score, createdAt: Date.now() });

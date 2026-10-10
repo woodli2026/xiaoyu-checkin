@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false
+  },
+  "include": [
+    "miniprogram/**/*.js",
+    "miniprogram/**/*.d.ts"
+  ]
+}
