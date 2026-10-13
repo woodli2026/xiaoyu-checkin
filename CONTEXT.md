@@ -25,9 +25,31 @@
 - **是什么**：微信原生小程序 + 微信云开发，面向家庭的儿童习惯养成工具（打卡 → 星星 → 兑换奖励 + 虚拟宠物陪伴）。
 - **命名**：「雨宝记」为对外名（2026-09 由「小雨记」更名）。代码里历史标识符 `xiaoyu` / `xy_` 前缀**保持不变**，属刻意保留，不要批量改名。
 - **版本**：`1.0.0`（`miniprogram/config.js` 的 `APP_VERSION`，显示在「关于」页）。
-- **当前运行档位**：`CLOUD_ENV = ''` → **本地兜底层**（wx.storage）。云端云函数已写完但**尚未部署**（顺延 V1.1）。
+- **当前运行档位**：**双分支并行**（2026-10-13 起，见下方「双分支工作流」）。
+  `v1.0-local` = `CLOUD_ENV = ''` → 本地兜底层（wx.storage），即线上 v1.0 形态；
+  `v1.1-cloud` = `CLOUD_ENV = 'cloud1-d1gom5pau1e9cf09d'` → 云函数层（环境已开通，集合/密钥待配）。
 - **技术约束**：无构建工具、无 TypeScript、无 ESLint、无第三方依赖。`npm run check` 做**语法解析级**校验；`npm run lint`（`tools/lint.js`，零依赖自研）做**跨文件可解析性 + 发布卫生**检查。类型安全靠约定 + 测试；**D8（2026-10-10）**：纯逻辑模块（`domain/tasks/calendar/bubble/confetti/pet-page/icons/storage`）已加 `// @ts-check` + JSDoc；含 `wx` 全局的模块由 `miniprogram/types/globals.d.ts`（最小 ambient 声明）+ 仓库根 `jsconfig.json` 兜底，**仅供 IDE 提示，不装 tsc、不进 CI**。
 - **规模**（2026-10-13 守卫基建去重后）：前端 js 45 个（含 `utils/` 18 + `services/local/` 10 + `behaviors/` 3）；云函数 13 个，每个自带 17 份 lib 副本（`cloudfunctions/lib/` 源 17 文件 → 221 副本 → cloudfunctions 下共 252 个 js）；`__tests__/` 28 个测试文件（+ `helpers/` 3 个共享模块）；全仓 333 个 js（`npm run check` 范围）。
+
+### 双分支工作流（2026-10-13 建立，⚠️ 切分支必读）
+
+**本地版与云端版从此分叉，各自独立演进、各自独立提审。**
+
+| 分支 | 定位 | `CLOUD_ENV` | 日常改动 |
+|---|---|---|---|
+| `v1.0-local` | **本地版主线**（当前默认分支所在） | `''` 空 → 本地兜底 | bug 修复、体验优化；不发版则线上无感 |
+| `v1.1-cloud` | **云端版分支** | `'cloud1-d1gom5pau1e9cf09d'` | V1.1 云同步/后台/离线队列 |
+| `main` | `v1.0-local` 的同源起点（`684a7a4`），暂未推送 v1.0-local | — | 冻结 |
+
+- `v1.1-cloud` 首提交 `1ca08a9` = V1.1a-0（opId 幂等基建 + F5 埋点，226 测试）。
+  `v1.0-local` 停在 `684a7a4`（215 测试）——**两条线测试数不同是正常的**（幂等守卫只在云端分支）。
+- ⚠️⚠️ **`config.js` 不随切分支变化**（`.gitignore` 排除 + `assume-unchanged`）：
+  切分支后它保留上一次编辑的值，**必须手工核对**。已踩过的坑：切到 `v1.0-local` 后
+  `CLOUD_ENV` 仍是环境 ID → 编译出来意外连云端。`config.js` 头部有对照表。
+  反向同理：切到 `v1.1-cloud` 后若忘填，会**静默降级**回本地兜底（`app.js` 的 fail-fast 设计）。
+- 两分支都能独立跑全绿：`v1.0-local` = test 215 / lint 110 / check 333；`v1.1-cloud` = test 226 / lint 113 / check 349。
+- 云环境：免费体验版，**约 2026-10-26 到期**（v1.0 已 2026-10-11 上线，按「上线后第 15 天」规则）。
+  V1.1 提审前必须转付费 19.9 元/月，详见 `docs/v1.1-design-spec.md` §6.1。
 
 ---
 
