@@ -6,51 +6,7 @@
 // 既防单边漂移，也防双端同漂移；同时顺带验证字面量语法有效。
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-const ROOT = path.resolve(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-
-// 从 openIdx（指向 '{'）起扫描，跳过字符串/注释，返回匹配的右括号索引
-function matchBrace(src, openIdx) {
-  let depth = 0, inStr = null, esc = false, lineC = false, blockC = false;
-  for (let i = openIdx; i < src.length; i++) {
-    const ch = src[i];
-    if (lineC) { if (ch === '\n') lineC = false; continue; }
-    if (blockC) { if (ch === '*' && src[i + 1] === '/') { blockC = false; i++; } continue; }
-    if (esc) { esc = false; continue; }
-    if (inStr) { if (ch === '\\') { esc = true; continue; } if (ch === inStr) inStr = null; continue; }
-    if (ch === '/' && src[i + 1] === '/') { lineC = true; i++; continue; }
-    if (ch === '/' && src[i + 1] === '*') { blockC = true; i++; continue; }
-    if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
-    if (ch === '{') depth++;
-    else if (ch === '}') { depth--; if (depth === 0) return i; }
-  }
-  throw new Error('未匹配到右括号');
-}
-
-// 返回从 anchor 之后第一个 '{' 起的完整 "{...}" 文本
-function objectLiteralAfter(src, anchor) {
-  const a = src.indexOf(anchor);
-  if (a < 0) throw new Error('找不到 anchor: ' + anchor);
-  const b = src.indexOf('{', a);
-  if (b < 0) throw new Error('anchor 后无 {');
-  return src.slice(b, matchBrace(src, b) + 1);
-}
-
-// 返回函数（含签名到匹配的右括号）的完整文本
-function functionAfter(src, fnName) {
-  const a = src.indexOf('function ' + fnName);
-  if (a < 0) throw new Error('找不到函数 ' + fnName);
-  const b = src.indexOf('{', a);
-  return src.slice(a, matchBrace(src, b) + 1);
-}
-
-function evalObj(span, sandbox) {
-  return vm.runInNewContext('(' + span + ')', sandbox);
-}
+const { read, objectLiteralAfter, functionBlock, evalObj } = require('./helpers/js-source');
 
 test('① REDEEM_BLOCK_MSG(本地兜底) ↔ BLOCK_MSG(云端兑换) 字面量口径一致', () => {
   const localMsg = evalObj(objectLiteralAfter(read('miniprogram/services/local/reward.js'), 'REDEEM_BLOCK_MSG ='), {});
@@ -86,8 +42,8 @@ test('② petView 输出键集 本地 ↔ 云端 一致（视图模型契约）'
     Number, Date
   };
   // 求值整段 petView 函数并调用，才能拿到真实输出对象（return 字面量引用了函数内局部变量）
-  const localView = evalObj('(' + functionAfter(read('miniprogram/services/local/pet.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
-  const cloudView = evalObj('(' + functionAfter(read('cloudfunctions/petCRUD/index.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
+  const localView = evalObj('(' + functionBlock(read('miniprogram/services/local/pet.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
+  const cloudView = evalObj('(' + functionBlock(read('cloudfunctions/petCRUD/index.js'), 'petView') + ')', sandbox)(sandbox.pet, sandbox.today);
   const expected = [
     '_id', 'adoptedAt', 'breedName', 'childId', 'emoji', 'feedCount', 'feedLimited',
     'growthPct', 'growthValue', 'mood', 'moodMax', 'name', 'nextStageAt', 'species',

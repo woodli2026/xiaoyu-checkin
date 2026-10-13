@@ -4,13 +4,8 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// —— mock wx.storage ——
-const store = {};
-global.wx = {
-  getStorageSync: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : ''),
-  setStorageSync: (k, v) => { store[k] = v; },
-  removeStorageSync: (k) => { delete store[k]; }
-};
+// —— mock wx.storage（共享助手，单一来源）——
+const { store } = require('./helpers/wx-storage').installWxStorageMock();
 
 // —— mock 全局 App 环境（家长会话经 getApp() 读写令牌态）——
 let syncModeCalls = 0;

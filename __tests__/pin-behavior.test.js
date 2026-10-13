@@ -35,3 +35,23 @@ test('五页均通过 behaviors 接入 pin-reauth（行为来源单一）', () =
   }
   assert.deepStrictEqual(offenders, [], '以下页面未接入 pin-reauth Behavior: ' + offenders.join(', '));
 });
+
+// Behavior 装配守卫：本 Behavior 必须提供这四个页面方法（在 methods 内）。
+// 教训（2026-10-11）：同项目的 behaviors/parent-gate.js 曾把方法写顶层而真机失效；
+// 通用形状检查见 __tests__/behavior-shape.test.js。
+test('装配守卫：behaviors/pin-reauth 必须提供四个 PIN 页面方法', () => {
+  const prev = global.Behavior;
+  global.Behavior = (def) => def;
+  let def;
+  try {
+    const abs = require.resolve('../miniprogram/behaviors/pin-reauth');
+    delete require.cache[abs];
+    def = require(abs);
+  } finally {
+    global.Behavior = prev;
+  }
+  assert.ok(def.methods, '缺少 methods 块（页面方法必须放进 methods 内）');
+  for (const m of ['onPinClose', 'onReauthNeed', 'onPinComplete', 'onPinForgot']) {
+    assert.strictEqual(typeof def.methods[m], 'function', m + ' 未注册为页面方法');
+  }
+});

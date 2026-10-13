@@ -12,6 +12,9 @@ const MAX_LIMIT = 100;
 //   - tasks / rewards：全部宝宝任务/奖励（故意不过滤 deleted，历史动态要显示已删条目的名字与图标）
 //   - checkIns / redemptions：全部宝宝打卡/兑换记录
 //   - limit / skip：分页参数（未提供则用默认/上限）
+//
+// ==MIRROR-SECTION:buildFeed==
+// 以下段由 tools/gen-mirror.js 注入 miniprogram/utils/feed.js 的同名 SLOT（勿在此处写云端专属代码）。
 function buildFeed(raw) {
   const { children, tasks, rewards, checkIns, redemptions, limit, skip } = raw;
   const childMap = {};
@@ -62,5 +65,6 @@ function buildFeed(raw) {
   const page = items.slice(sk, sk + lim);
   return { items: page, hasMore: sk + page.length < total, total };
 }
+// ==MIRROR-SECTION-END==
 
 module.exports = { buildFeed, DEFAULT_LIMIT, MAX_LIMIT };

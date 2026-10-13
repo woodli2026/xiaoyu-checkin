@@ -7,10 +7,9 @@ const CF = require('../../utils/confetti');
 const { bubbleStyleFor } = require('../../utils/bubble');
 const { PRIVACY_KEY } = require('../../config');
 const { attachTabBarSync } = require('../../utils/tabbar');
-const session = require('../../utils/parent-session');
 
 Page({
-  behaviors: [require('../../behaviors/pin-reauth')],
+  behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate')],
   data: {
     mode: 'display',
     pinSet: false,
@@ -48,7 +47,6 @@ Page({
     petEmoji: '🐣',
     praiseTimer: null
   },
-  onAppTouch() { getApp().touch(); },
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 });
@@ -170,20 +168,7 @@ Page({
     this.stepMonth(dx < 0 ? 1 : -1);
   },
   switchSub(e) { this.setData({ subTab: e.currentTarget.dataset.tab }); },
-  toggleParent() {
-    const app = getApp();
-    if (this.data.mode === 'parent') {
-      app.clearParent();
-      this.setData({ mode: 'display' });
-      wx.showToast({ title: '已退出家长模式', icon: 'none' });
-      return;
-    }
-    if (!this.data.pinSet) {
-      wx.showToast({ title: '请先到「我」页设置 PIN', icon: 'none' });
-      return;
-    }
-    this.setData({ showPin: true, pinError: '' });
-  },
+  // toggleParent 已收拢到 behaviors/parent-gate（锁图标 bindtap="toggleParent"）
   openDay(e) { this.renderDay(e.currentTarget.dataset.date); },
   onDayClose() { this.setData({ showDay: false }); },
   onDayScroll(e) { this._dayScrollTop = e.detail.scrollTop; },
@@ -207,10 +192,7 @@ Page({
     });
   },
   async onDayPick(e) {
-    if (this.data.mode !== 'parent') {
-      wx.showToast({ title: '请点击右上角锁图标开启家长模式', icon: 'none' });
-      return;
-    }
+    if (!this.requireParent()) return;
     const { taskId, task, done } = e.detail;
     const app = getApp();
     const score = (task && task.score) || 1;
@@ -237,10 +219,7 @@ Page({
     }
   },
   openRedeem(e) {
-    if (this.data.mode !== 'parent') {
-      wx.showToast({ title: '请点击右上角锁图标开启家长模式', icon: 'none' });
-      return;
-    }
+    if (!this.requireParent()) return;
     const id = e.currentTarget.dataset.id;
     const target = (this.data.rewards || []).find(r => r._id === id);
     if (!target) return;

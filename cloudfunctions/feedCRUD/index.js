@@ -14,7 +14,7 @@
 // 3) 撤销打卡后连续天数/星级由打卡流水推导（lib/streak.displayStreak），自动重算。
 // 4) 取消兑换会删除 redemptions 记录 → 限次奖励（resetAfterRedeem=false）自动恢复可兑。
 const { cloud, db, _, ok, fail, getUserByOpenid } = require('./lib/cloud');
-const { resolveCaller } = require('./lib/runtime');
+const { resolveCaller, ownedChild } = require('./lib/runtime');
 const { verifyToken } = require('./lib/token');
 const { buildFeed } = require('./lib/feed');
 const { displayStreak } = require('./lib/streak');
@@ -26,13 +26,7 @@ const MAX_LIMIT = 100;
 // 单类型最多参与聚合的记录数（客户端分页在内存完成，避免两类记录跨表分页的复杂度）
 const SCAN_LIMIT = 500;
 
-async function ownedChild(user, childId) {
-  const d = await db.collection('children').doc(childId).get().catch(() => null);
-  const c = d && d.data;
-  if (!c || c.ownerId !== user._id || c.deleted) return null;
-  return c;
-}
-
+// 候选②：归属校验统一走 lib/runtime.js#ownedChild（严格，不回退），不再自写一份
 async function listFeed(user, event) {
   const limit = Math.min(Math.max(Number(event.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT);
   const skip = Math.max(Number(event.skip) || 0, 0);
@@ -68,7 +62,7 @@ async function undoCheckIn(openid, user, event) {
   const ciDoc = await db.collection('checkIns').doc(event.id).get().catch(() => null);
   const ci = ciDoc && ciDoc.data;
   if (!ci) return fail('NOT_FOUND', '打卡记录不存在或已撤销');
-  const child = await ownedChild(user, ci.childId);
+  const child = await ownedChild(openid, ci.childId);
   if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
 
   const taskDoc = await db.collection('tasks').doc(ci.taskId).get().catch(() => null);
@@ -99,7 +93,7 @@ async function undoRedeem(openid, user, event) {
   const rdDoc = await db.collection('redemptions').doc(event.id).get().catch(() => null);
   const rd = rdDoc && rdDoc.data;
   if (!rd) return fail('NOT_FOUND', '兑换记录不存在或已取消');
-  const child = await ownedChild(user, rd.childId);
+  const child = await ownedChild(openid, rd.childId);
   if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
 
   const rewardDoc = await db.collection('rewards').doc(rd.rewardId).get().catch(() => null);

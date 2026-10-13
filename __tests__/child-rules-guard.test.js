@@ -15,64 +15,14 @@
 // 零运行时风险：纯新增测试文件，不改动任何被测代码。
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('path');
 const vm = require('node:vm');
 
-const ROOT = path.resolve(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const keysOf = (o) => Object.keys(o).sort();
+const { read, keysOf, functionBlock, arrowBlock, evalInContext, evalObj } = require('./helpers/js-source');
+const { installWxStorageMock } = require('./helpers/wx-storage');
 
-// ---------- 字面量/函数提取（与 mirror-guard / view-shape-guard 同思路） ----------
-function matchBrace(src, openIdx) {
-  let depth = 0, inStr = null, esc = false, lineC = false, blockC = false;
-  for (let i = openIdx; i < src.length; i++) {
-    const ch = src[i];
-    if (lineC) { if (ch === '\n') lineC = false; continue; }
-    if (blockC) { if (ch === '*' && src[i + 1] === '/') { blockC = false; i++; } continue; }
-    if (esc) { esc = false; continue; }
-    if (inStr) { if (ch === '\\') { esc = true; continue; } if (ch === inStr) inStr = null; continue; }
-    if (ch === '/' && src[i + 1] === '/') { lineC = true; i++; continue; }
-    if (ch === '/' && src[i + 1] === '*') { blockC = true; i++; continue; }
-    if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
-    if (ch === '{') depth++;
-    else if (ch === '}') { depth--; if (depth === 0) return i; }
-  }
-  throw new Error('未匹配到右括号');
-}
+// ---------- 本地层 wx.storage mock（共享助手，单一来源；供 real require 本地 childCRUD） ----------
+const { store } = installWxStorageMock();
 
-// 返回完整具名函数文本 `function NAME(params) { BODY }`（括号感知，正确处理解构参数）
-function functionBlock(src, fnName) {
-  const sig = (src.includes('async function ' + fnName) ? 'async function ' : 'function ') + fnName;
-  const start = src.indexOf(sig);
-  if (start < 0) throw new Error('找不到函数: ' + fnName);
-  let i = src.indexOf('(', start), depth = 0;
-  for (; i < src.length; i++) {
-    if (src[i] === '(') depth++;
-    else if (src[i] === ')') { depth--; if (depth === 0) break; }
-  }
-  const b = src.indexOf('{', i);
-  return src.slice(start, matchBrace(src, b) + 1);
-}
-
-function arrowBlock(src, anchor) {
-  const a = src.indexOf(anchor);
-  if (a < 0) throw new Error('找不到 anchor: ' + anchor);
-  const i = src.indexOf('=>', a);
-  const b = src.indexOf('{', i);
-  return src.slice(b, matchBrace(src, b) + 1);
-}
-
-function evalInContext(code, sandbox) { return vm.runInNewContext(code, sandbox); }
-function evalFn(whole, sandbox) { return vm.runInNewContext('(' + whole + ')', sandbox); }
-
-// ---------- 本地层 wx.storage mock（供 real require 本地 childCRUD） ----------
-const store = {};
-global.wx = {
-  getStorageSync: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : ''),
-  setStorageSync: (k, v) => { store[k] = v; },
-  removeStorageSync: (k) => { delete store[k]; }
-};
 const local = require('../miniprogram/services/local');
 
 // ---------- 云端 childCRUD 的 vm 单上下文编译 ----------
@@ -203,16 +153,16 @@ test('childCRUD 双端档案校验守卫（串行，避免共享 store 竞态）
   // ② childView 形状守卫
   await t.test('② childView 输出形状 本地↔云端 一致', () => {
     const sample = { _id: 'c1', ownerId: 'u1', name: '小明', avatar: '🧒', photo: 'p.png', gender: 'boy', birthday: '2018-06-15', allergens: '花生', deleted: false };
-    const localView = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'childView'), {})(sample);
-    const cloudView = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'childView'), {})(sample);
+    const localView = evalObj(functionBlock(read('miniprogram/services/local/child.js'), 'childView'), {})(sample);
+    const cloudView = evalObj(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'childView'), {})(sample);
     assert.deepEqual(localView, cloudView, '双端 childView 输出不一致');
     assert.deepStrictEqual(keysOf(localView).sort(), CHILD_VIEW_KEYS, 'childView 键集漂移');
   });
 
   // ③ normalizeBirthday 行为守卫
   await t.test('③ normalizeBirthday 行为 本地↔云端 一致（含真实日期校验）', () => {
-    const localF = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'normalizeBirthday'), {});
-    const cloudF = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'normalizeBirthday'), {});
+    const localF = evalObj(functionBlock(read('miniprogram/services/local/child.js'), 'normalizeBirthday'), {});
+    const cloudF = evalObj(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'normalizeBirthday'), {});
     const cases = ['', '2020-01-01', '2020-02-29', '2020-12-31', '2021-02-28', '2020-13-01', '2020-02-30', '2019-02-29', '2020-1-1', '20200101', 'abc'];
     for (const c of cases) {
       assert.strictEqual(localF(c), cloudF(c), `生日校验不一致: ${JSON.stringify(c)}`);
@@ -224,11 +174,11 @@ test('childCRUD 双端档案校验守卫（串行，避免共享 store 竞态）
     const failStubLocal = (code, message) => ({ code, message: message || code });
     const GENDERS = ['', 'boy', 'girl'];
     const ALLERGENS_MAX = 50;
-    const localNb = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'normalizeBirthday'), {});
-    const cloudNb = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'normalizeBirthday'), {});
-    const localExtract = evalFn(functionBlock(read('miniprogram/services/local/child.js'), 'extractChildProfile'),
+    const localNb = evalObj(functionBlock(read('miniprogram/services/local/child.js'), 'normalizeBirthday'), {});
+    const cloudNb = evalObj(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'normalizeBirthday'), {});
+    const localExtract = evalObj(functionBlock(read('miniprogram/services/local/child.js'), 'extractChildProfile'),
       { fail: failStubLocal, GENDERS, ALLERGENS_MAX, normalizeBirthday: localNb });
-    const cloudExtract = evalFn(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'extractProfileFields'),
+    const cloudExtract = evalObj(functionBlock(read('cloudfunctions/childCRUD/index.js'), 'extractProfileFields'),
       { fail: failStubLocal, GENDERS, ALLERGENS_MAX, normalizeBirthday: cloudNb });
 
     const cases = [

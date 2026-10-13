@@ -1,4 +1,4 @@
-<view class="page" bindtap="onAppTouch">
+<view class="page">
   <!-- 家长中心卡 -->
   <view class="me-card">
     <view class="kid-ava">{{user.avatar}}</view>

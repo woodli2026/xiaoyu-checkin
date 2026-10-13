@@ -1,7 +1,7 @@
 // cloudfunctions/checkIn —— 打卡：防重复 / 加分 / 连续天数 / 写流水（事务原子）
 const { cloud, db, ok, fail } = require('./lib/cloud');
 const { applyCheckIn } = require('./lib/checkInCore');
-const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
+const { resolveCaller, assertToken, ownedChild, ownedTask } = require('./lib/runtime');
 const { displayStreak } = require('./lib/streak');
 const { levelOf } = require('./lib/level');
 const { ymd } = require('./lib/util');
@@ -13,14 +13,15 @@ exports.main = async (event) => {
   const tf = assertToken(event, OPENID);
   if (tf) return tf;
 
+  // 候选②：childId 必须属于自己（严格，不回退），不属于一律 CHILD_NOT_FOUND
   const child = await ownedChild(OPENID, event.childId);
   if (!child) return fail('CHILD_NOT_FOUND', '孩子档案不存在');
 
   const date = event.date || ymd(new Date());
 
-  const taskDoc = await db.collection('tasks').doc(event.taskId).get().catch(() => null);
-  const task = taskDoc && taskDoc.data;
-  if (!task || task.deleted) return fail('TASK_NOT_FOUND', '任务不存在或已删除');
+  // 候选②：任务也必须属于自己 —— 堵住「用别人的 taskId 给自己孩子打卡」
+  const task = await ownedTask(OPENID, event.taskId);
+  if (!task) return fail('TASK_NOT_FOUND', '任务不存在或已删除');
   if (!(Number(task.score) > 0)) return fail('INVALID', '星星数非法');
 
   // 防重复（硬保障为 checkIns 唯一索引 (ownerId, childId, taskId, date)）

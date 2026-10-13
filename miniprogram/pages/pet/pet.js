@@ -3,10 +3,9 @@ const P = require('../../utils/pets');
 const { pagePetData } = require('../../utils/pet-page');
 const CF = require('../../utils/confetti');
 const { attachTabBarSync } = require('../../utils/tabbar');
-const session = require('../../utils/parent-session');
 const ANIM_MS = { stroke: 1600, feed: 1800 };
 Page({
-  behaviors: [require('../../behaviors/pin-reauth')],
+  behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate')],
   data: {
     mode: 'display',
     useCloud: false,
@@ -52,7 +51,6 @@ Page({
     showManage: false,
     confetti: []
   },
-  onAppTouch() { getApp().touch(); },
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 });
@@ -88,10 +86,7 @@ Page({
   },
   async feed() {
     const app = getApp();
-    if (this.data.mode !== 'parent') {
-      wx.showToast({ title: '投喂需家长模式', icon: 'none' });
-      return;
-    }
+    if (!this.requireParent({ msg: '投喂需家长模式' })) return;
     if (this.data.totalStars < P.PET_FEED_COST) {
       wx.showToast({ title: '星星不够啦', icon: 'none' });
       return;
@@ -141,10 +136,7 @@ Page({
   pickSpecies(e) {
     const g = P.groupOf(e.currentTarget.dataset.key);
     if (!g) return;
-    if (this.data.mode !== 'parent') {
-      wx.showToast({ title: '领养需家长模式', icon: 'none' });
-      return;
-    }
+    if (!this.requireParent({ msg: '领养需家长模式' })) return;
     this.setData({ showName: true, adoptSpecies: g.key, adoptSpeciesEmoji: g.emoji, adoptName: g.defName });
   },
   closeName() { this.setData({ showName: false }); },
@@ -196,10 +188,7 @@ Page({
     }
   },
   openManage() {
-    if (this.data.mode !== 'parent') {
-      wx.showToast({ title: '需家长模式', icon: 'none' });
-      return;
-    }
+    if (!this.requireParent({ msg: '需家长模式' })) return;
     this.setData({ showManage: true });
   },
   closeManage() { this.setData({ showManage: false }); },

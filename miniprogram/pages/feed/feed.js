@@ -3,7 +3,6 @@ const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
 const F = require('../../utils/feed');
 const { attachTabBarSync } = require('../../utils/tabbar');
-const session = require('../../utils/parent-session');
 const PAGE_SIZE = 30;
 function modal(options) {
   return new Promise((resolve) => {
@@ -14,13 +13,12 @@ function modal(options) {
   });
 }
 Page({
-  behaviors: [require('../../behaviors/pin-reauth')],
+  behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate')],
   data: {
     mode: 'display', pinSet: false, useCloud: false,
     groups: [], total: 0, loading: false, hasMore: false,
     showDetail: false, detail: null, detailErr: '', busy: false
   },
-  onAppTouch() { getApp().touch(); },
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 3 });
@@ -84,29 +82,14 @@ Page({
   },
   closeDetail() { this.setData({ showDetail: false, detail: null, detailErr: '' }); },
   noop() {},
-  toggleParent() {
-    const app = getApp();
-    if (this.data.mode === 'parent') {
-      app.clearParent();
-      this.setData({ mode: 'display' });
-      wx.showToast({ title: '已退出家长模式', icon: 'none' });
-      return;
-    }
-    if (!this.data.pinSet) {
-      wx.showToast({ title: '请先到「我」页设置 PIN', icon: 'none' });
-      return;
-    }
-    this.setData({ showPin: true, pinError: '' });
-  },
+  // toggleParent 已收拢到 behaviors/parent-gate（锁图标 bindtap="toggleParent"）
   async undoCheckIn() { await this._undo('undoCheckIn'); },
   async undoRedeem() { await this._undo('undoRedeem'); },
   async _undo(op) {
     const it = this.data.detail;
     if (!it || this.data.busy) return;
-    if (this.data.mode !== 'parent') {
-      this.setData({ detailErr: '请点击右上角锁图标开启家长模式' });
-      return;
-    }
+    // 详情内提示（不弹 toast），故走 errField
+    if (!this.requireParent({ errField: 'detailErr', msg: '请先开启家长模式' })) return;
     const isCheckin = op === 'undoCheckIn';
     const r = await modal({
       title: isCheckin ? '标记为未完成' : '取消兑换',

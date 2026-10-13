@@ -15,7 +15,7 @@
 //   ③ 投喂消耗星星 → 需家长令牌 + 一条 refType='pet_feed' 的积分流水。
 const { cloud, db, ok, fail } = require('./lib/cloud');
 const { ymd } = require('./lib/util');
-const { resolveCaller, assertToken } = require('./lib/runtime');
+const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
 const P = require('./lib/pets');
 
 function petView(pet, today) {
@@ -49,12 +49,9 @@ exports.main = async (event) => {
 
   const today = ymd(new Date());
   const pets = db.collection('pets');
-  const children = db.collection('children');
-
-  // 严格归属校验：不属于该用户的宝宝一律 FORBIDDEN（不做回退）
-  const cdoc = event.childId ? await children.doc(event.childId).get().catch(() => null) : null;
-  const child = cdoc && cdoc.data;
-  if (!child || child.ownerId !== user._id || child.deleted) return fail('FORBIDDEN', '无权访问该宝宝档案');
+  // 候选②：统一走 runtime.ownedChild（严格归属 + 已过滤软删），不做回退
+  const child = await ownedChild(OPENID, event.childId);
+  if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
 
   // 内存过滤 released：老档案可能没有该字段，where released:false 不匹配缺字段文档
   async function findPet() {

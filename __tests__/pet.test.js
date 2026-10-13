@@ -5,13 +5,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-// —— mock wx.storage ——
-const store = {};
-global.wx = {
-  getStorageSync: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : ''),
-  setStorageSync: (k, v) => { store[k] = v; },
-  removeStorageSync: (k) => { delete store[k]; }
-};
+// —— mock wx.storage（共享助手，单一来源）——
+const { store } = require('./helpers/wx-storage').installWxStorageMock();
 
 const P = require('../miniprogram/utils/pets');
 const s = require('../miniprogram/utils/storage');

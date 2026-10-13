@@ -2,7 +2,6 @@ const { callApi } = require('../../utils/api');
 const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
 const { attachTabBarSync } = require('../../utils/tabbar');
-const session = require('../../utils/parent-session');
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 function todayStr() { return D.ymd(new Date()); }
 function emptyTaskForm(childId) {
@@ -18,7 +17,7 @@ function emptyRewardForm(childId) {
   return { childId, title: '', icon: '🎁', category: 'reward', resetAfterRedeem: true, cost: 5, praise: '' };
 }
 Page({
-  behaviors: [require('../../behaviors/pin-reauth')],
+  behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate')],
   data: {
     mode: 'display', pinSet: false, subTab: 'task',
     tasks: [], rewards: [],
@@ -28,7 +27,6 @@ Page({
     showIcon: false,
     showConfirm: false, confirmKind: '', confirmId: '', confirmTitle: ''
   },
-  onAppTouch() { getApp().touch(); },
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 2 });
@@ -65,13 +63,6 @@ Page({
     }
   },
   switchSub(e) { this.setData({ subTab: e.currentTarget.dataset.tab }); },
-  requireParent() {
-    if (this.data.mode !== 'parent') {
-      wx.showToast({ title: '请点击首页右上角锁图标开启家长模式', icon: 'none' });
-      return false;
-    }
-    return true;
-  },
   onFab() {
     if (!this.requireParent()) return;
     if (this.data.subTab === 'task') this.openCreateTask();

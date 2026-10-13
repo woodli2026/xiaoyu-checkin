@@ -1,4 +1,4 @@
-<view class="page" bindtap="onAppTouch">
+<view class="page">
   <!-- 顶部宠物信息条：头像 + 宠物名称 + 级别 + 右侧改名（参考首页 kidbar） -->
   <view class="kidbar">
     <view class="kid-ava">

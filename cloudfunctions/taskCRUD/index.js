@@ -1,7 +1,7 @@
 // cloudfunctions/taskCRUD —— 任务 建/改/删（软删；软删不回退星星）
 const { cloud, db, ok, fail, getOwnedChild } = require('./lib/cloud');
 const { ymd } = require('./lib/util');
-const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
+const { resolveCaller, assertToken, ownedChild, ownedTask } = require('./lib/runtime');
 
 const PATCH_KEYS = ['title', 'type', 'icon', 'date', 'repeat', 'priority', 'praise'];
 
@@ -34,11 +34,9 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'update') {
-    const doc = await coll.doc(p.id).get().catch(() => null);
-    const task = doc && doc.data;
+    // 候选②：ownedTask 内含归属 + 软删校验，他人任务一律 NOT_FOUND（不泄露存在性）
+    const task = await ownedTask(OPENID, p.id);
     if (!task) return fail('NOT_FOUND', '任务不存在');
-    const child = await ownedChild(OPENID, task.childId);
-    if (!child) return fail('FORBIDDEN', '无权操作');
     const patch = {};
     PATCH_KEYS.forEach(k => { if (p[k] != null) patch[k] = p[k]; });
     if (p.score != null) patch.score = Number(p.score);
@@ -52,11 +50,9 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'delete') {
-    const doc = await coll.doc(p.id).get().catch(() => null);
-    const task = doc && doc.data;
+    // 候选②：ownedTask 内含归属 + 软删校验，他人任务一律 NOT_FOUND（不泄露存在性）
+    const task = await ownedTask(OPENID, p.id);
     if (!task) return fail('NOT_FOUND', '任务不存在');
-    const child = await ownedChild(OPENID, task.childId);
-    if (!child) return fail('FORBIDDEN', '无权操作');
     await coll.doc(p.id).update({ data: { deleted: true } });
     return ok({ id: p.id });
   }

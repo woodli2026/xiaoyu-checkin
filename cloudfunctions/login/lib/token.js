@@ -33,8 +33,10 @@ function randHex(len) {
 }
 
 // 签发：token = base64url(payload) + '.' + hmac
+// ⚠️ ttlMs **无默认值**（候选①）：旧实现兜底 5 分钟，会让「忘传 TTL」静默生效为 5 分钟，
+//    与 R10.1 的 1 年长效相悖。现在强制调用方显式传（缺省即 NaN，立刻暴露）。
 function issueToken(openid, ttlMs, secret) {
-  const expireAt = Date.now() + (ttlMs || 5 * 60 * 1000);
+  const expireAt = Date.now() + ttlMs;
   const payload = Buffer.from(JSON.stringify({ openid, expireAt })).toString('base64url');
   const token = payload + '.' + sign(payload, secret);
   return { token, expireAt };

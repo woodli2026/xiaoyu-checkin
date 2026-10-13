@@ -8,7 +8,8 @@ exports.main = async (event) => {
   const { OPENID } = r;
   const tf = assertToken(event, OPENID);
   if (tf) return tf;
+  // 候选②：ownedChild 已是严格归属（不属于自己 → null），无需再手工比对 _id
   const child = await ownedChild(OPENID, event.childId);
-  if (!child || child._id !== event.childId || child.deleted) return fail('FORBIDDEN', '无权访问该宝宝档案');
+  if (!child) return fail('FORBIDDEN', '无权访问该宝宝档案');
   return ok({ childId: child._id });
 };

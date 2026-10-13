@@ -2,7 +2,6 @@ const { callApi } = require('../../utils/api');
 const D = require('../../utils/domain');
 const { attachTabBarSync } = require('../../utils/tabbar');
 const s = require('../../utils/storage');
-const session = require('../../utils/parent-session');
 const CF = require('../../utils/child-form');
 function modal(options) {
   return new Promise((resolve) => {
@@ -13,7 +12,7 @@ function modal(options) {
   });
 }
 Page({
-  behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/child-photo')],
+  behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate'), require('../../behaviors/child-photo')],
   data: {
     mode: 'display', pinSet: false, useCloud: false,
     user: { nickname: '', avatar: '🧒', randomCode: '' },
@@ -29,7 +28,6 @@ Page({
     startInParent: true   // 设置项：启动即家长模式（R10，默认开）
   },
   noop() {},
-  onAppTouch() { getApp().touch(); },
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 4 });
@@ -62,20 +60,7 @@ Page({
       this.setData({ children: res.children || [], child: res.child || null });
     } catch (e) { /* 忽略 */ }
   },
-  toggleParent() {
-    const app = getApp();
-    if (this.data.mode === 'parent') {
-      app.clearParent();
-      this.setData({ mode: 'display' });
-      wx.showToast({ title: '已退出家长模式', icon: 'none' });
-      return;
-    }
-    if (!this.data.pinSet) {
-      wx.showToast({ title: '请先设置家长 PIN', icon: 'none' });
-      return;
-    }
-    this.setData({ showPin: true, pinError: '' });
-  },
+  // toggleParent 已收拢到 behaviors/parent-gate（「家长模式」行 bindtap="toggleParent"）
   toggleStartInParent(e) {
     const v = !!e.detail.value;
     s.write(s.KEYS.startInParent, v);
@@ -83,10 +68,7 @@ Page({
   },
   openSetPin() {
     const app = getApp();
-    if (app.globalData.mode !== 'parent') {
-      wx.showToast({ title: '请先进入家长模式', icon: 'none' });
-      return;
-    }
+    if (!this.requireParent()) return;
     this.setData({ showSetPin: true, setPinStage: 'new', pendingPin: '', setPinErr: '' });
   },
   onSetPinComplete(e) {
@@ -134,15 +116,9 @@ Page({
       wx.showToast({ title: '重置失败', icon: 'none' });
     }
   },
-  _requireParent() {
-    if (getApp().globalData.mode !== 'parent') {
-      wx.showToast({ title: '请先进入家长模式', icon: 'none' });
-      return false;
-    }
-    return true;
-  },
+  // 家长模式闸门已收拢到 behaviors/parent-gate#requireParent（真值统一取 globalData.mode）
   openBabyList() {
-    if (!this._requireParent()) return;
+    if (!this.requireParent()) return;
     this.setData({ showBabyList: true });
   },
   closeBabyList() { this.setData({ showBabyList: false }); },
@@ -150,7 +126,7 @@ Page({
     const app = getApp();
     const childId = e.currentTarget.dataset.id;
     if (childId === this.data.childId) return;
-    if (!this._requireParent()) return;
+    if (!this.requireParent()) return;
     try {
       await callApi('childSwitch', { childId });
       app.globalData.childId = childId;
@@ -162,11 +138,11 @@ Page({
     }
   },
   openNewChild() {
-    if (!this._requireParent()) return;
+    if (!this.requireParent()) return;
     this.setData(Object.assign({ showEditChild: true }, CF.emptyChildForm()));
   },
   openChildEditor(e) {
-    if (!this._requireParent()) return;
+    if (!this.requireParent()) return;
     const id = e.currentTarget.dataset.id;
     const c = (this.data.children || []).find(x => x._id === id);
     if (!c) return;
@@ -217,7 +193,7 @@ Page({
     this.load();
   },
   async deleteChild() {
-    if (!this._requireParent()) return;
+    if (!this.requireParent()) return;
     const id = this.data.editChildId;
     const c = (this.data.children || []).find(x => x._id === id);
     if (!c) return;

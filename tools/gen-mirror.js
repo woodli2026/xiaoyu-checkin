@@ -51,6 +51,28 @@ const MIRRORS = [
     ],
     // 前端特有前置（云端 pets.js 为 require('./util')+require('./streak') 合并，前端用 utils/domain 统一提供）
     head: ["const D = require('./domain');"]   // lint-ignore（此串是「被生成的代码文本」，非本文件的真 require）
+  },
+  {
+    // 候选⑤（2026-10-11）：看板聚合此前是「两端手抄 + aggregate-guard 行为对比」，
+    // 现升级为整文件机生成镜像 —— 逐字节守卫比单样本行为对比强得多。
+    name: 'dashboard',
+    src: 'cloudfunctions/lib/dashboard.js',
+    out: 'miniprogram/utils/dashboard.js',
+    banner: [
+      '// utils/dashboard.js —— 看板视图聚合（纯函数）· 自动生成的镜像，请勿手改！',
+      '//',
+      '// 唯一源：cloudfunctions/lib/dashboard.js',
+      '// 生成：npm run gen:mirror      校验：npm run verify:mirror（已接入 npm test）',
+      '// 覆盖：宝宝档案投影 / 今日任务（可见性过滤）/ 当月点亮 / 连续天数 / 限次奖励已兑换标记',
+      '// 端到端行为另由 __tests__/aggregate-guard.test.js 守卫（双端 getDashboard 输出一致）。'
+    ],
+    // 云端源用裸函数名（require 各 lib），前端统一由 domain / tasks 提供 → 此处做命名空间映射
+    head: [
+      "const D = require('./domain');",        // lint-ignore
+      "const T = require('./tasks');",         // lint-ignore
+      'const { displayStreak, levelOf } = D;',
+      'const { taskVisibleOn } = T;'
+    ]
   }
 ];
 
@@ -61,7 +83,9 @@ const SECTIONS = [
   { name: 'level',       src: 'cloudfunctions/lib/level.js',       out: 'miniprogram/utils/domain.js' },
   { name: 'checkInCore', src: 'cloudfunctions/lib/checkInCore.js', out: 'miniprogram/utils/domain.js' },
   { name: 'redeemCore',  src: 'cloudfunctions/lib/redeemCore.js',  out: 'miniprogram/utils/domain.js' },
-  { name: 'visibility',  src: 'cloudfunctions/lib/visibility.js',  out: 'miniprogram/utils/tasks.js' }
+  { name: 'visibility',  src: 'cloudfunctions/lib/visibility.js',  out: 'miniprogram/utils/tasks.js' },
+  // 候选⑤（2026-10-11）：动态列表聚合升级为机生成镜像（前端其余展示逻辑保留手写）
+  { name: 'buildFeed',   src: 'cloudfunctions/lib/feed.js',        out: 'miniprogram/utils/feed.js' }
 ];
 
 // 取唯一源中标记行之后的正文（去掉标记行与随后的空行）

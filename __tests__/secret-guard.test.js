@@ -9,9 +9,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { strip } = require('../tools/lint');
+const { ROOT, strip } = require('./helpers/js-source');
 
-const ROOT = path.join(__dirname, '..');
 const token = require(path.join(ROOT, 'cloudfunctions', 'lib', 'token.js'));
 const pin = require(path.join(ROOT, 'cloudfunctions', 'lib', 'pin.js'));
 

@@ -3,7 +3,7 @@
 //   resetAfterRedeem=true  → 可反复兑换；false → 每位孩子仅一次
 const { cloud, db, ok, fail } = require('./lib/cloud');
 const { applyRedeem, redeemBlockReason } = require('./lib/redeemCore');
-const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
+const { resolveCaller, assertToken, ownedChild, ownedReward } = require('./lib/runtime');
 
 const BLOCK_MSG = {
   REWARD_NOT_FOUND: '奖励不存在或已删除',
@@ -19,12 +19,13 @@ exports.main = async (event) => {
   const tf = assertToken(event, OPENID);
   if (tf) return tf;
 
+  // 候选②：childId 必须属于自己（严格，不回退），不属于一律 CHILD_NOT_FOUND
   const child = await ownedChild(OPENID, event.childId);
   if (!child) return fail('CHILD_NOT_FOUND', '孩子档案不存在');
 
-  const rDoc = await db.collection('rewards').doc(event.rewardId).get().catch(() => null);
-  const reward = rDoc && rDoc.data;
-  if (!reward || reward.deleted) return fail('REWARD_NOT_FOUND', '奖励不存在或已删除');
+  // 候选②：奖励也必须属于自己 —— 堵住「兑换别人的奖励、扣自己孩子的星星」
+  const reward = await ownedReward(OPENID, event.rewardId);
+  if (!reward) return fail('REWARD_NOT_FOUND', '奖励不存在或已删除');
 
   // 限次奖励：查该孩子此前是否已兑换过（替代原「库存」的角色）
   let alreadyRedeemed = false;

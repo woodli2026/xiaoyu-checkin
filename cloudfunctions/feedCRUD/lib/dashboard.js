@@ -8,6 +8,10 @@ const { taskVisibleOn } = require('./visibility');
 const { displayStreak } = require('./streak');
 const { levelOf } = require('./level');
 
+// ==MIRROR-BODY-START==
+// 以下正文由 tools/gen-mirror.js 整文件镜像到 miniprogram/utils/dashboard.js（勿在此处写前端专属代码）。
+// 前端侧的 require 前缀由生成器的 head 注入（D.displayStreak / T.taskVisibleOn），故此处保持裸函数名。
+
 // 宝宝档案投影（看板返回的 child / children 共用）
 function childView(c) {
   return {

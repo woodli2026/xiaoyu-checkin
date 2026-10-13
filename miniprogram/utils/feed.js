@@ -65,12 +65,18 @@ function groupByDay(items, todayYmd) {
   return groups;
 }
 
-// 动态列表数据聚合（纯函数）。云端镜像：cloudfunctions/lib/feed.js。
+// 动态列表数据聚合（纯函数）—— buildFeed 正文由 gen-mirror 从 cloudfunctions/lib/feed.js 注入（勿手改）。
 // 仅做「原始记录 → 列表项」的 join/投影 + 排序 + 分页；分组/时间文案见上方 groupByDay。
-// 两端逻辑必须逐字一致（由 aggregate-guard 守卫）。
-const FEED_DEFAULT_LIMIT = 30;
-const FEED_MAX_LIMIT = 100;
+//
+// 注入正文使用裸常量名 DEFAULT_LIMIT / MAX_LIMIT（与云端源一致），故在此定义；
+// 对外导出仍保留 FEED_ 前缀（避免与页面其他常量撞名）。
+const DEFAULT_LIMIT = 30;
+const MAX_LIMIT = 100;
+const FEED_DEFAULT_LIMIT = DEFAULT_LIMIT;
+const FEED_MAX_LIMIT = MAX_LIMIT;
 
+// ==MIRROR-SLOT:buildFeed (AUTO-GENERATED ← cloudfunctions/lib/feed.js)==
+// 以下段由 tools/gen-mirror.js 注入 miniprogram/utils/feed.js 的同名 SLOT（勿在此处写云端专属代码）。
 function buildFeed(raw) {
   const { children, tasks, rewards, checkIns, redemptions, limit, skip } = raw;
   const childMap = {};
@@ -92,6 +98,7 @@ function buildFeed(raw) {
       refId: ci.taskId, title: t ? t.title : '（任务已删除）', icon: t ? t.icon : '❔',
       stars, delta: stars,
       date: ci.date || null, createdAt: ci.createdAt || 0, deleted: !!(t && t.deleted),
+      // 详情用
       taskType: t ? (t.type || '') : '', repeat: t && t.repeat ? t.repeat : null,
       priority: t ? (t.priority || 'none') : 'none'
     });
@@ -107,6 +114,7 @@ function buildFeed(raw) {
       refId: rd.rewardId, title: r ? r.title : '（奖励已删除）', icon: r ? r.icon : '❔',
       stars: cost, delta: -cost,
       date: null, createdAt: rd.createdAt || 0, deleted: !!(r && r.deleted),
+      // 详情用
       category: r ? (r.category || 'reward') : 'reward',
       resetAfterRedeem: r ? !!r.resetAfterRedeem : true
     });
@@ -114,10 +122,11 @@ function buildFeed(raw) {
 
   items.sort((a, b) => b.createdAt - a.createdAt);
   const total = items.length;
-  const lim = Math.min(Math.max(Number(limit) || FEED_DEFAULT_LIMIT, 1), FEED_MAX_LIMIT);
+  const lim = Math.min(Math.max(Number(limit) || DEFAULT_LIMIT, 1), MAX_LIMIT);
   const sk = Math.max(Number(skip) || 0, 0);
   const page = items.slice(sk, sk + lim);
   return { items: page, hasMore: sk + page.length < total, total };
 }
+// ==MIRROR-SLOT-END==
 
 module.exports = { clockText, timeText, dayLabel, deltaText, kindLabel, isBackfill, groupByDay, buildFeed, FEED_DEFAULT_LIMIT, FEED_MAX_LIMIT };

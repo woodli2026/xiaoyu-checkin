@@ -1,4 +1,4 @@
-<view class="page" bindtap="onAppTouch">
+<view class="page">
   <!-- 顶部孩子条：头像 + 昵称 + 副标题 + 右上角家长模式锁图标 -->
   <view class="kidbar">
     <view class="kid-ava">

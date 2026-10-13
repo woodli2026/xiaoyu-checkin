@@ -1,7 +1,8 @@
-// cloudfunctions/unlockParent —— 校验 PIN → 签发家长令牌（5 分钟）
+// cloudfunctions/unlockParent —— 校验 PIN → 签发家长令牌（有效期见 lib/session.js，R10.1 为 1 年）
 const { cloud, ok, fail } = require('./lib/cloud');
 const { verifyPin, isCurrentPinScheme } = require('./lib/pin');
 const { issueToken } = require('./lib/token');
+const { PARENT_TOKEN_TTL_MS } = require('./lib/session');
 const { resolveCaller } = require('./lib/runtime');
 
 exports.main = async (event) => {
@@ -16,6 +17,7 @@ exports.main = async (event) => {
   }
   if (!verifyPin(event.pin, user.pinHash)) return fail('PIN_INVALID', 'PIN 不正确');
 
-  const t = issueToken(OPENID, 5 * 60 * 1000);
+  // 候选①：有效期走单一政策源（与前端 config.PARENT_TOKEN_TTL_MS 一致，守卫见 token-ttl-guard）
+  const t = issueToken(OPENID, PARENT_TOKEN_TTL_MS);
   return ok({ parentToken: t.token, expireAt: t.expireAt });
 };

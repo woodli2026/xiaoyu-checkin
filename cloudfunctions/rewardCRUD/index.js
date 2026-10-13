@@ -1,6 +1,6 @@
 // cloudfunctions/rewardCRUD —— 奖励 建/改/删（软删；软删不回退星星）
 const { cloud, db, ok, fail, getOwnedChild } = require('./lib/cloud');
-const { resolveCaller, assertToken, ownedChild } = require('./lib/runtime');
+const { resolveCaller, assertToken, ownedChild, ownedReward } = require('./lib/runtime');
 
 exports.main = async (event) => {
   const r = await resolveCaller(event);
@@ -31,11 +31,9 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'update') {
-    const doc = await coll.doc(p.id).get().catch(() => null);
-    const reward = doc && doc.data;
+    // 候选②：ownedReward 内含归属 + 软删校验，他人奖励一律 NOT_FOUND（不泄露存在性）
+    const reward = await ownedReward(OPENID, p.id);
     if (!reward) return fail('NOT_FOUND', '奖励不存在');
-    const child = await ownedChild(OPENID, reward.childId);
-    if (!child) return fail('FORBIDDEN', '无权操作');
     const patch = {};
     if (p.title != null) {
       if (!String(p.title).trim()) return fail('INVALID', '请填写标题');
@@ -54,11 +52,9 @@ exports.main = async (event) => {
   }
 
   if (event.op === 'delete') {
-    const doc = await coll.doc(p.id).get().catch(() => null);
-    const reward = doc && doc.data;
+    // 候选②：ownedReward 内含归属 + 软删校验，他人奖励一律 NOT_FOUND（不泄露存在性）
+    const reward = await ownedReward(OPENID, p.id);
     if (!reward) return fail('NOT_FOUND', '奖励不存在');
-    const child = await ownedChild(OPENID, reward.childId);
-    if (!child) return fail('FORBIDDEN', '无权操作');
     await coll.doc(p.id).update({ data: { deleted: true } });
     return ok({ id: p.id });
   }

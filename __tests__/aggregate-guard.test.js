@@ -13,88 +13,15 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// ---------- mock：wx-server-sdk + 内存 db（额外支持 _.in，供 feedCRUD 跨宝宝聚合） ----------
-const collections = {};
-let CURRENT_OPENID = 'init';
-let seq = 0;
-const genId = (p) => p + '_' + (++seq);
+const { createHarness, installWxServerSdk } = require('./helpers/cloud-db');
+const { installWxStorageMock } = require('./helpers/wx-storage');
+const { keysOf, strip } = require('./helpers/js-source');
 
-const command = {
-  in: (arr) => ({ $in: arr })
-};
-
-function makeQuery(arr) {
-  let data = arr.slice();
-  const api = {
-    where(filter) {
-      if (filter) {
-        data = data.filter(d => Object.keys(filter).every(k => {
-          const fv = filter[k];
-          if (fv && typeof fv === 'object' && '$in' in fv) return fv.$in.indexOf(d[k]) >= 0;
-          return d[k] === fv;
-        }));
-      }
-      return api;
-    },
-    orderBy(field, dir) {
-      data.sort((a, b) => (dir === 'desc' ? (b[field] - a[field]) : (a[field] - b[field])));
-      return api;
-    },
-    limit(n) { data = data.slice(0, n); return api; },
-    get() { return Promise.resolve({ data }); }
-  };
-  return api;
-}
-
-const dbMock = {
-  command,
-  collection(name) {
-    if (!collections[name]) collections[name] = [];
-    const arr = collections[name];
-    return {
-      where(f) { return makeQuery(arr).where(f); },
-      orderBy(f, d) { return makeQuery(arr).orderBy(f, d); },
-      limit(n) { return makeQuery(arr).limit(n); },
-      get() { return makeQuery(arr).get(); },
-      add({ data }) {
-        const doc = Object.assign({ _id: genId(name[0]) }, data);
-        arr.push(doc);
-        return Promise.resolve({ _id: doc._id });
-      },
-      doc(id) {
-        const found = arr.find(d => d._id === id);
-        return {
-          get() { return Promise.resolve({ data: found || null }); },
-          update() { return Promise.resolve({}); },
-          remove() { return Promise.resolve({}); }
-        };
-      }
-    };
-  }
-};
-
-const cloudMock = {
-  DYNAMIC_CURRENT_ENV: 'test-env',
-  init() {},
-  database() { return dbMock; },
-  getWXContext() { return { OPENID: CURRENT_OPENID }; }
-};
-
-// 拦截 require('wx-server-sdk')（必须在 require 云端 module 之前安装）
-const Module = require('module');
-const origLoad = Module._load;
-Module._load = function (request, parent, isMain) {
-  if (request === 'wx-server-sdk') return cloudMock;
-  return origLoad.apply(this, arguments);
-};
-
-// ---------- 本地层 wx.storage mock ----------
-const store = {};
-global.wx = {
-  getStorageSync: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : ''),
-  setStorageSync: (k, v) => { store[k] = v; },
-  removeStorageSync: (k) => { delete store[k]; }
-};
+// ---------- mock：忠实内存 db（helpers/cloud-db：支持 command.in / runTransaction）+ wx.storage ----------
+// 必须「先装 mock 再 require 云函数 / 服务」：lib/cloud.js 在加载期就取 db。
+const H = createHarness();
+installWxServerSdk(H);
+const { store } = installWxStorageMock();
 
 const storage = require('../miniprogram/utils/storage');
 const local = require('../miniprogram/services/local');
@@ -103,8 +30,6 @@ const cloudDash = require('../cloudfunctions/lib/dashboard');
 const localFeed = require('../miniprogram/utils/feed');
 const cloudFeed = require('../cloudfunctions/lib/feed');
 const cloudFeedCRUD = require('../cloudfunctions/feedCRUD');
-
-const keysOf = (o) => Object.keys(o).sort();
 
 // ---------- ① 纯函数双份镜像对称（同一入参逐字段一致） ----------
 const TODAY = '2026-10-10';
@@ -186,14 +111,14 @@ const ready = (async () => {
 
   // 同一份数据灌进云端 mock db
   const user = store[storage.KEYS.user];
-  CURRENT_OPENID = user ? user.openid : 'local_openid';
-  collections.users = user ? [user] : [];
-  collections.children = store[storage.KEYS.children] || [];
-  collections.tasks = store[storage.KEYS.tasks] || [];
-  collections.rewards = store[storage.KEYS.rewards] || [];
-  collections.checkIns = store[storage.KEYS.checkIns] || [];
-  collections.redemptions = store[storage.KEYS.redemptions] || [];
-  collections.pointsLog = store[storage.KEYS.points] || [];
+  H.setOpenid(user ? user.openid : 'local_openid');
+  H.seed('users', user ? [user] : []);
+  H.seed('children', store[storage.KEYS.children] || []);
+  H.seed('tasks', store[storage.KEYS.tasks] || []);
+  H.seed('rewards', store[storage.KEYS.rewards] || []);
+  H.seed('checkIns', store[storage.KEYS.checkIns] || []);
+  H.seed('redemptions', store[storage.KEYS.redemptions] || []);
+  H.seed('pointsLog', store[storage.KEYS.points] || []);
   return { childId };
 })();
 
@@ -216,13 +141,11 @@ test('feedCRUD op=list 输出 本地↔云端 完全一致（形状+顺序+分�
 // ./lib/runtime，因云端从未实跑、无测试触碰而潜伏。这里对全部 13 个云函数静态扫一遍。
 test('云端 13 函数：用到 runtime 原语就必须 require ./lib/runtime', () => {
   const cfRoot = path.resolve(__dirname, '..', 'cloudfunctions');
-  const stripComments = (s) =>
-    s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
   const offenders = [];
   for (const d of fs.readdirSync(cfRoot)) {
     const idx = path.join(cfRoot, d, 'index.js');
     if (!fs.existsSync(idx)) continue;
-    const src = stripComments(fs.readFileSync(idx, 'utf8'));
+    const src = strip(fs.readFileSync(idx, 'utf8'));
     const usesPrimitive = /\bresolveCaller\s*\(|\bassertToken\s*\(/.test(src);
     const hasRequire = /require\(\s*['"]\.\/lib\/runtime['"]\s*\)/.test(src);
     if (usesPrimitive && !hasRequire) offenders.push(d);

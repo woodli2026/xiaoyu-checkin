@@ -10,140 +10,17 @@
 // 零运行时风险：纯新增测试文件，不改动任何被测代码。
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('path');
-const vm = require('node:vm');
-const Module = require('module');
+const { createHarness, installWxServerSdk } = require('./helpers/cloud-db');
+const { installWxStorageMock } = require('./helpers/wx-storage');
+const {
+  read, keysOf, objectLiteralAfter, arrowBlock, functionBlock, evalObj
+} = require('./helpers/js-source');
 
-const ROOT = path.resolve(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const keysOf = (o) => Object.keys(o).sort();
-
-// ---------- 字面量提取（与 mirror-guard 同思路） ----------
-function matchBrace(src, openIdx) {
-  let depth = 0, inStr = null, esc = false, lineC = false, blockC = false;
-  for (let i = openIdx; i < src.length; i++) {
-    const ch = src[i];
-    if (lineC) { if (ch === '\n') lineC = false; continue; }
-    if (blockC) { if (ch === '*' && src[i + 1] === '/') { blockC = false; i++; } continue; }
-    if (esc) { esc = false; continue; }
-    if (inStr) { if (ch === '\\') { esc = true; continue; } if (ch === inStr) inStr = null; continue; }
-    if (ch === '/' && src[i + 1] === '/') { lineC = true; i++; continue; }
-    if (ch === '/' && src[i + 1] === '*') { blockC = true; i++; continue; }
-    if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
-    if (ch === '{') depth++;
-    else if (ch === '}') { depth--; if (depth === 0) return i; }
-  }
-  throw new Error('未匹配到右括号');
-}
-
-// 返回 anchor 之后第一个 '{' 起的完整 "{...}" 文本
-function objectLiteralAfter(src, anchor) {
-  const a = src.indexOf(anchor);
-  if (a < 0) throw new Error('找不到 anchor: ' + anchor);
-  const b = src.indexOf('{', a);
-  if (b < 0) throw new Error('anchor 后无 {');
-  return src.slice(b, matchBrace(src, b) + 1);
-}
-
-// 返回 anchor 之后第一个 '{' 起的完整 "{...}" 块（用于提取箭头函数体）
-function arrowBlock(src, anchor) {
-  const a = src.indexOf(anchor);
-  if (a < 0) throw new Error('找不到 anchor: ' + anchor);
-  const i = src.indexOf('=>', a);
-  const b = src.indexOf('{', i);
-  return src.slice(b, matchBrace(src, b) + 1);
-}
-
-// 括号感知地提取具名函数体（正确处理 `async function f({ op }) {` 之类的解构参数）
-function functionBlock(src, fnName) {
-  const sig = (src.includes('async function ' + fnName) ? 'async function ' : 'function ') + fnName;
-  const start = src.indexOf(sig);
-  if (start < 0) throw new Error('找不到函数: ' + fnName);
-  let i = src.indexOf('(', start), depth = 0;
-  for (; i < src.length; i++) {
-    if (src[i] === '(') depth++;
-    else if (src[i] === ')') { depth--; if (depth === 0) break; }
-  }
-  const b = src.indexOf('{', i);
-  return src.slice(b, matchBrace(src, b) + 1);
-}
-
-function evalObj(span, sandbox) {
-  return vm.runInNewContext('(' + span + ')', sandbox);
-}
-
-// ---------- wx-server-sdk mock：让云端 getDashboard 在 Node 真执行 ----------
-const collections = {};          // name -> docs[]
-let CURRENT_OPENID = 'init';
-let seq = 0;
-const genId = (p) => p + '_' + (++seq);
-
-function makeQuery(arr) {
-  let data = arr.slice();
-  const api = {
-    where(filter) {
-      if (filter) data = data.filter(d => Object.keys(filter).every(k => d[k] === filter[k]));
-      return api;
-    },
-    orderBy(field, dir) {
-      data.sort((a, b) => (dir === 'desc' ? (b[field] - a[field]) : (a[field] - b[field])));
-      return api;
-    },
-    limit(n) { data = data.slice(0, n); return api; },
-    get() { return Promise.resolve({ data }); }
-  };
-  return api;
-}
-
-const dbMock = {
-  command: {},
-  collection(name) {
-    if (!collections[name]) collections[name] = [];
-    const arr = collections[name];
-    return {
-      where(f) { return makeQuery(arr).where(f); },
-      orderBy(f, d) { return makeQuery(arr).orderBy(f, d); },
-      limit(n) { return makeQuery(arr).limit(n); },
-      get() { return makeQuery(arr).get(); },
-      add({ data }) {
-        const doc = Object.assign({ _id: genId(name[0]) }, data);
-        arr.push(doc);
-        return Promise.resolve({ _id: doc._id });
-      },
-      doc(id) {
-        const found = arr.find(d => d._id === id);
-        return {
-          get() { return Promise.resolve({ data: found || null }); },
-          update() { return Promise.resolve({}); },
-          remove() { return Promise.resolve({}); }
-        };
-      }
-    };
-  }
-};
-
-const cloudMock = {
-  DYNAMIC_CURRENT_ENV: 'test-env',
-  init() {},
-  database() { return dbMock; },
-  getWXContext() { return { OPENID: CURRENT_OPENID }; }
-};
-
-// 拦截 require('wx-server-sdk')，注入 mock（必须在 require 云端 index 之前安装）
-const origLoad = Module._load;
-Module._load = function (request, parent, isMain) {
-  if (request === 'wx-server-sdk') return cloudMock;
-  return origLoad.apply(this, arguments);
-};
-
-// ---------- 本地层 wx.storage mock ----------
-const store = {};
-global.wx = {
-  getStorageSync: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : ''),
-  setStorageSync: (k, v) => { store[k] = v; },
-  removeStorageSync: (k) => { delete store[k]; }
-};
+// ---------- 云端 mock：忠实内存 db（helpers/cloud-db）+ wx.storage（helpers/wx-storage） ----------
+// 必须「先装 mock 再 require 云函数 / 服务」：lib/cloud.js 在加载期就取 db。
+const H = createHarness();
+installWxServerSdk(H);
+const { store } = installWxStorageMock();
 
 const storage = require('../miniprogram/utils/storage');
 const local = require('../miniprogram/services/local');
@@ -169,13 +46,13 @@ const ready = (async () => {
 
   // 把同一份数据灌进云端 mock db（保证两端吃完全一致的入参）
   const user = store[storage.KEYS.user];
-  CURRENT_OPENID = user ? user.openid : 'local_openid';
-  collections.users = user ? [user] : [];
-  collections.children = store[storage.KEYS.children] || [];
-  collections.tasks = store[storage.KEYS.tasks] || [];
-  collections.rewards = store[storage.KEYS.rewards] || [];
-  collections.checkIns = store[storage.KEYS.checkIns] || [];
-  collections.redemptions = store[storage.KEYS.redemptions] || [];
+  H.setOpenid(user ? user.openid : 'local_openid');
+  H.seed('users', user ? [user] : []);
+  H.seed('children', store[storage.KEYS.children] || []);
+  H.seed('tasks', store[storage.KEYS.tasks] || []);
+  H.seed('rewards', store[storage.KEYS.rewards] || []);
+  H.seed('checkIns', store[storage.KEYS.checkIns] || []);
+  H.seed('redemptions', store[storage.KEYS.redemptions] || []);
 
   return { childId };
 })();
