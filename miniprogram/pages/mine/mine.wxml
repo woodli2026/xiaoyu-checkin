@@ -86,6 +86,22 @@
       </view>
       <text class="ar">›</text>
     </view>
+    <view wx:if="{{!useCloud}}" class="me-row" bindtap="exportData">
+      <text class="me-ic">💾</text>
+      <view class="me-tx">
+        <view>数据导出 / 备份</view>
+        <view class="me-sub">导出本机全部数据为 JSON 文件，可存手机或转发</view>
+      </view>
+      <text class="ar">›</text>
+    </view>
+    <view wx:if="{{!useCloud}}" class="me-row" bindtap="importData">
+      <text class="me-ic">📥</text>
+      <view class="me-tx">
+        <view>恢复备份</view>
+        <view class="me-sub">从聊天中的备份文件恢复，覆盖当前数据</view>
+      </view>
+      <text class="ar">›</text>
+    </view>
   </view>
 
   <view class="hint">孩子无独立账号 · 所有写操作由家长模式完成<br />{{useCloud ? '云端模式' : '本地模式（数据存本机）'}}</view>

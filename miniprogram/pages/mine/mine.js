@@ -255,5 +255,78 @@ Page({
     } catch (e) {
       wx.showToast({ title: '重置失败', icon: 'none' });
     }
+  },
+  // 数据导出 / 备份：仅本地模式可用（云端模式下数据在云，导出是另一回事）。
+  // 把本机全部数据打包成 JSON 文件，经微信「分享 / 保存」交到用户手里。
+  async exportData() {
+    const r = await modal({
+      title: '数据导出 / 备份',
+      content: '将把本机全部数据（宝宝档案、任务、奖励、打卡记录、星星流水、宠物等）导出为一个 JSON 文件。' +
+        '你可以把它发到「文件传输助手」或「保存到手机」留存，用于换机或清缓存前备份。导出不会影响现有数据。'
+    });
+    if (!r.confirm) return;
+    wx.showLoading({ title: '正在生成…', mask: true });
+    try {
+      const res = await callApi('exportBackup', { appVersion: this.data.version });
+      wx.hideLoading();
+      if (res && res.ok) {
+        wx.showToast({ title: '已生成，请选择保存到手机', icon: 'none' });
+      } else {
+        wx.showToast({ title: (res && res.message) || '导出失败', icon: 'none' });
+      }
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: (err && err.message) || '导出失败', icon: 'none' });
+    }
+  },
+  // 恢复备份：从聊天中选取备份文件，校验后覆盖恢复。
+  // 破坏性操作：家长闸门 + 两次确认（意图确认 → 摘要确认）。
+  async importData() {
+    if (!this.requireParent()) return;
+    const app = getApp();
+    const r = await modal({
+      title: '恢复备份',
+      content: '将从备份文件恢复本机数据，当前数据会被完全覆盖。建议先「导出」一份当前数据留底。继续？'
+    });
+    if (!r.confirm) return;
+    // 第一步：选文件 + 校验（pickBackup 不写入）
+    let pick;
+    try {
+      pick = await callApi('pickBackup', {});
+    } catch (err) {
+      if (err && err.code === 'CANCELLED') return;   // 用户取消选文件，静默返回
+      // 校验类失败（非 JSON / 非本应用 / 版本不符 / 结构异常）用弹窗展示完整诊断（含文件开头预览与长度），
+      // 便于定位是「选错文件」还是「文件在传输中被损坏」；toast 会截断长文本，故用 modal。
+      if (err && err.code && err.code !== 'PICK_FAIL' && err.code !== 'NO_PICK_API' && err.code !== 'READ_FAIL') {
+        wx.showModal({ title: '导入失败', content: (err && err.message) || '备份文件无效', showCancel: false });
+      } else {
+        wx.showToast({ title: (err && err.message) || '选择文件失败', icon: 'none' });
+      }
+      return;
+    }
+    // 第二步：摘要确认（导出时间 + 数据量）
+    const L = { children: '宝宝', tasks: '任务', rewards: '奖励', checkIns: '打卡', redemptions: '兑换', pointsLog: '星星流水', pets: '宠物' };
+    const parts = [];
+    Object.keys(L).forEach((k) => { if (pick.counts && pick.counts[k]) parts.push(L[k] + ' ' + pick.counts[k]); });
+    const when = (pick.exportedAt || '').replace('T', ' ').slice(0, 16) || '未知时间';
+    const r2 = await modal({
+      title: '确认恢复',
+      content: '备份导出于 ' + when + (parts.length ? '（' + parts.join(' · ') + '）' : '') + '。恢复将覆盖当前全部数据，确定？'
+    });
+    if (!r2.confirm) return;
+    wx.showLoading({ title: '正在恢复…', mask: true });
+    try {
+      await callApi('restoreBackup', { json: pick.json });
+      wx.hideLoading();
+      // 存储已整体替换：清家长会话 + 重新登录，让 globalData 与新数据对齐
+      app.clearParent();
+      await app.login();
+      this.setData({ mode: 'display' });
+      wx.showToast({ title: '已恢复', icon: 'success' });
+      this.refresh();
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: (err && err.message) || '恢复失败', icon: 'none' });
+    }
   }
 });

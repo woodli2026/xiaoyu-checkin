@@ -20,6 +20,9 @@ const OPS = {
   resetPin: 'public',       // 云端 resetPin 不校验 parentToken，按 openid 重置（与旧豁免表一致）
   getDashboard: 'public',
   resetAll: 'local',        // 仅本地：services/local.js 独有，无云端对应
+  exportBackup: 'local',    // 仅本地：导出本机全部数据为 JSON 文件（无云端对应）
+  pickBackup: 'local',      // 仅本地：选备份文件 + 校验（不写入）
+  restoreBackup: 'local',   // 仅本地：覆盖式恢复备份（无云端对应）
   checkIn: 'token',
   redeem: 'token',
   childSwitch: 'token',
@@ -37,7 +40,7 @@ const OPS = {
 };
 
 // 本地独占、无云端对应的函数名（守卫测试据此放行，不算「云函数表缺项」）
-const LOCAL_ONLY = ['resetAll'];
+const LOCAL_ONLY = ['resetAll', 'exportBackup', 'pickBackup', 'restoreBackup'];
 
 // 返回某次调用的令牌标记：'public' | 'local' | 'token' | null（未知调用）
 function callFlag(name, op) {

@@ -13,6 +13,7 @@
 //   ./local/feed.js      动态流水
 //   ./local/pet.js       宠物
 //   ./local/demo.js      演示辅助（resetAll）
+//   ./local/backup.js    本地版数据导出 / 备份（仅本地模式，注册为本地独占 op）
 const auth = require('./local/auth');
 const dashboard = require('./local/dashboard');
 const checkin = require('./local/checkin');
@@ -22,6 +23,7 @@ const child = require('./local/child');
 const feed = require('./local/feed');
 const pet = require('./local/pet');
 const demo = require('./local/demo');
+const backup = require('./local/backup');
 
 module.exports = {
   login: auth.login,
@@ -38,6 +40,9 @@ module.exports = {
   feedCRUD: feed.feedCRUD,
   petCRUD: pet.petCRUD,
   resetAll: demo.resetAll,
+  exportBackup: backup.exportBackup,   // 本地独占 op：导出本机全部数据为 JSON 文件
+  pickBackup: backup.pickBackup,       // 本地独占 op：选文件 + 校验（不写入）
+  restoreBackup: backup.restoreFromJson, // 本地独占 op：覆盖式恢复（页面二次确认后调用）
   DEFAULT_PIN: auth.DEFAULT_PIN,
   PIN_LENGTH: auth.PIN_LENGTH,
   PIN_SCHEME: auth.PIN_SCHEME   // 导出供单测守卫（与 cloudfunctions/lib/pin.js 比对）

@@ -56,7 +56,8 @@ test('③ local.js 导出的后端函数都在 OPS 中（resetAll 为本地独�
   const expected = [
     'login', 'unlockParent', 'setPin', 'resetPin', 'getDashboard',
     'checkIn', 'redeem', 'taskCRUD', 'rewardCRUD', 'childCRUD',
-    'childSwitch', 'feedCRUD', 'petCRUD', 'resetAll'
+    'childSwitch', 'feedCRUD', 'petCRUD', 'resetAll', 'exportBackup',
+    'pickBackup', 'restoreBackup'
   ];
   assert.deepStrictEqual(exported.sort(), expected.sort(), 'local.js 导出与预期不符，请核对');
   for (const fn of expected) {
