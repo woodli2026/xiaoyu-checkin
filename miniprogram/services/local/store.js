@@ -17,8 +17,17 @@ function allRewards() { return s.read(s.KEYS.rewards, []); }
 function saveRewards(l) { s.write(s.KEYS.rewards, l); }
 function allCheckIns() { return s.read(s.KEYS.checkIns, []); }
 function saveCheckIns(l) { s.write(s.KEYS.checkIns, l); }
+// 候选④：pointsLog 零修剪 → 备份随使用时长线性膨胀（用户每日打卡都在追加）。
+// 设上限，超出只保留 createdAt 最新的 CAP 条，旧流水回收。running balance（child.totalStars）
+// 存在 child 上，不依赖流水完整性，裁剪不影响余额与展示。
+const POINTS_LOG_CAP = 2000;
 function allPoints() { return s.read(s.KEYS.pointsLog, []); }
-function savePoints(l) { s.write(s.KEYS.pointsLog, l); }
+function savePoints(l) {
+  if (Array.isArray(l) && l.length > POINTS_LOG_CAP) {
+    l = l.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, POINTS_LOG_CAP);
+  }
+  s.write(s.KEYS.pointsLog, l);
+}
 function allRedemptions() { return s.read(s.KEYS.redemptions, []); }
 function saveRedemptions(l) { s.write(s.KEYS.redemptions, l); }
 function allPets() { return s.read(s.KEYS.pets, []); }
@@ -37,7 +46,7 @@ module.exports = {
   allTasks, saveTasks,
   allRewards, saveRewards,
   allCheckIns, saveCheckIns,
-  allPoints, savePoints,
+  allPoints, savePoints, POINTS_LOG_CAP,
   allRedemptions, saveRedemptions,
   allPets, savePets,
   verifyLocalToken

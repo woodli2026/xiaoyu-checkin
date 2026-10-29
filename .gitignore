@@ -7,6 +7,7 @@ node_modules/
 # 项目文档统一迁入 docs/，按用户要求不再提交 git（含 README-小程序.md 中的真实云密钥 XY_TOKEN_SECRET / XY_PIN_SALT）
 docs/
 assets/
+.archify/
 
 # 自动化截图产物
 tools/shots/
@@ -22,6 +23,7 @@ project.private.config.json
 .DS_Store
 Thumbs.db
 desktop.ini
+AGENTS.md
 
 # 说明：cloudfunctions/*/lib/ 是共享逻辑的同步副本，
 # 微信开发者工具上传时只打包函数目录，故这些副本**必须入库**，不要忽略。

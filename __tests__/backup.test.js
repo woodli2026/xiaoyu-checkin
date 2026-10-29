@@ -7,6 +7,7 @@ const { store } = require('./helpers/wx-storage').installWxStorageMock();
 const backup = require('../miniprogram/services/local/backup');
 const local = require('../miniprogram/services/local');
 const s = require('../miniprogram/utils/storage');
+const { callApi } = require('../miniprogram/utils/api');
 
 test('备份收集：全量数据键（排除会话令牌 token），数量统计正确', async () => {
   await local.resetAll();
@@ -220,3 +221,78 @@ test('隐私闸门：requirePrivacyAuthorize 失败（指引未声明）→ 明�
   const ok = await backup.pickBackup();
   assert.strictEqual(ok.ok, true);
 });
+
+// ============ 候选③：错误分类沉回数据层（ERROR_KIND 单一来源）============
+
+test('错误分类：全部错误码都映射到合法 kind（单一来源，防漏填）', () => {
+  const KINDS = ['cancelled', 'retryable', 'blocked', 'invalid'];
+  const allCodes = ['NO_PICK_API', 'CANCELLED', 'READ_FAIL', 'PICK_FAIL', 'PRIVACY_FAIL',
+    'BAD_JSON', 'NOT_XY_BACKUP', 'VERSION_UNSUPPORTED', 'NO_DATA', 'BAD_SHAPE',
+    'NO_FS', 'WRITE_FAIL', 'DELIVER_FAIL', 'NO_DELIVER_API'];
+  for (const c of allCodes) {
+    assert.ok(backup.ERROR_KIND[c], '每个码都应有 kind 映射: ' + c);
+    assert.ok(KINDS.indexOf(backup.ERROR_KIND[c]) >= 0, 'kind 必须在枚举内: ' + c);
+  }
+});
+
+test('fail()：统一返回 { ok:false, code, kind, message }', () => {
+  const r = backup.fail('BAD_JSON', { preview: 'xxx', len: 3 });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.code, 'BAD_JSON');
+  assert.strictEqual(r.kind, 'invalid');
+  assert.ok(r.message.indexOf('开头「') >= 0, '校验类应带诊断预览');
+  // 显式 message 优先于诊断兜底
+  const r2 = backup.fail('READ_FAIL', { message: '读取文件失败' });
+  assert.strictEqual(r2.kind, 'retryable');
+  assert.strictEqual(r2.message, '读取文件失败');
+  // 未知码兜底为 invalid（防页面 switch 落入未定义分支）
+  assert.strictEqual(backup.fail('UNKNOWN_X').kind, 'invalid');
+});
+
+test('pickBackup 返回值携带 kind：页面只按 kind 分支（不再枚举数据层码）', async () => {
+  await local.resetAll();
+  const json = backup.buildPayload({});
+  global.wx.env = { USER_DATA_PATH: '/tmp/xy' };
+  // ① 用户取消 → cancelled
+  global.wx.chooseMessageFile = (o) => o.fail({ errMsg: 'chooseMessageFile:fail cancel' });
+  const c = await backup.pickBackup();
+  assert.strictEqual(c.code, 'CANCELLED');
+  assert.strictEqual(c.kind, 'cancelled');
+  // ② 内容非法 → invalid（含文件开头诊断）
+  global.wx.chooseMessageFile = (o) => o.success({ tempFiles: [{ path: '/tmp/b.json' }] });
+  global.wx.getFileSystemManager = () => ({ readFileSync: () => '<html>404</html>' });
+  const bad = await backup.pickBackup();
+  assert.strictEqual(bad.kind, 'invalid');
+  assert.ok(bad.message.indexOf('开头「') >= 0);
+  // ③ 隐私未声明 → blocked（chooseMessageFile 仍需是函数，否则会提前走 NO_PICK_API 分支）
+  global.wx.chooseMessageFile = (o) => o.success({ tempFiles: [{ path: '/tmp/b.json' }] });
+  global.wx.requirePrivacyAuthorize = (o) => o.fail({ errMsg: 'requirePrivacyAuthorize:fail:112 not declared' });
+  const blocked = await backup.pickBackup();
+  assert.strictEqual(blocked.kind, 'blocked');
+  assert.ok(blocked.message.indexOf('选中的文件') >= 0);
+  // ④ 成功路径：counts / json 仍正确，不受 kind 改造影响
+  global.wx.requirePrivacyAuthorize = (o) => o.success({});
+  global.wx.chooseMessageFile = (o) => o.success({ tempFiles: [{ path: '/tmp/b.json', name: 'backup.json', size: 100 }] });
+  global.wx.getFileSystemManager = () => ({ readFileSync: () => json });
+  const ok = await backup.pickBackup();
+  assert.strictEqual(ok.ok, true);
+  assert.ok(ok.counts);
+});
+
+test('callApi 透传 kind：页面 catch 到带 kind 的错误对象（端到端回归）', async () => {
+  await local.resetAll();
+  // 最小 App 环境，使 useCloud() 不抛 ReferenceError
+  const prevGetApp = global.getApp;
+  global.getApp = () => ({ globalData: { useCloud: false, parentToken: null } });
+  global.wx.requirePrivacyAuthorize = (o) => o.fail({ errMsg: 'requirePrivacyAuthorize:fail:112 not declared' });
+  global.wx.chooseMessageFile = (o) => o.success({ tempFiles: [{ path: '/tmp/b.json' }] });
+  let caught = null;
+  try {
+    await callApi('pickBackup', {});
+  } catch (e) { caught = e; }
+  if (prevGetApp === undefined) delete global.getApp; else global.getApp = prevGetApp;
+  assert.ok(caught, '应抛出错误');
+  assert.strictEqual(caught.code, 'PRIVACY_FAIL');
+  assert.strictEqual(caught.kind, 'blocked');   // 关键：kind 经 callApi 透传到页面
+});
+

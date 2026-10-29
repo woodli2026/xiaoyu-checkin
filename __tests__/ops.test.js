@@ -40,8 +40,9 @@ test('② 每个云函数实际处理的 op 都在其 OPS 映射中（防漏登�
     const ops = cloudOps(d);
     const entry = OPS[d];
     if (ops.length === 0) {
-      // 无 op 分派：OPS[d] 应为字符串标记
-      assert.strictEqual(typeof entry, 'string', `云函数 ${d} 无 op 分支，OPS[${d}] 应为字符串标记`);
+      // 无 op 分派：OPS[d] 应为元数据对象 { token, params }
+      assert.strictEqual(typeof entry, 'object', `云函数 ${d} 无 op 分支，OPS[${d}] 应为对象`);
+      assert.ok(entry && typeof entry.token === 'string', `云函数 ${d} 的 OPS 条目应有 token 字段`);
     } else {
       assert.strictEqual(typeof entry, 'object', `云函数 ${d} 有 op 分支，OPS[${d}] 应为对象`);
       for (const op of ops) {
@@ -57,7 +58,7 @@ test('③ local.js 导出的后端函数都在 OPS 中（resetAll 为本地独�
     'login', 'unlockParent', 'setPin', 'resetPin', 'getDashboard',
     'checkIn', 'redeem', 'taskCRUD', 'rewardCRUD', 'childCRUD',
     'childSwitch', 'feedCRUD', 'petCRUD', 'resetAll', 'exportBackup',
-    'pickBackup', 'restoreBackup'
+    'pickBackup', 'restoreBackup', 'pointsLog'
   ];
   assert.deepStrictEqual(exported.sort(), expected.sort(), 'local.js 导出与预期不符，请核对');
   for (const fn of expected) {

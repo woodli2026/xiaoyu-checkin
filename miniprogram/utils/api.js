@@ -56,6 +56,7 @@ async function callApi(name, params = {}) {
   if (result && result.ok === false) {
     const err = new Error(result.message || result.code || 'ERROR');
     err.code = result.code || 'ERROR';
+    if (result.kind) err.kind = result.kind;   // 错误语义分类（数据层单一来源），页面按 kind 分支
     throw err;
   }
   return result || {};

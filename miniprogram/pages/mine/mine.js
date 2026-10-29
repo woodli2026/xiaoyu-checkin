@@ -3,14 +3,7 @@ const D = require('../../utils/domain');
 const { attachTabBarSync } = require('../../utils/tabbar');
 const s = require('../../utils/storage');
 const CF = require('../../utils/child-form');
-function modal(options) {
-  return new Promise((resolve) => {
-    wx.showModal(Object.assign({}, options, {
-      success: (res) => resolve(res),
-      fail: () => resolve({ confirm: false })
-    }));
-  });
-}
+const { modal } = require('../../utils/modal');
 Page({
   behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate'), require('../../behaviors/child-photo')],
   data: {
@@ -294,13 +287,18 @@ Page({
     try {
       pick = await callApi('pickBackup', {});
     } catch (err) {
-      if (err && err.code === 'CANCELLED') return;   // 用户取消选文件，静默返回
-      // 校验类失败（非 JSON / 非本应用 / 版本不符 / 结构异常）用弹窗展示完整诊断（含文件开头预览与长度），
-      // 便于定位是「选错文件」还是「文件在传输中被损坏」；toast 会截断长文本，故用 modal。
-      if (err && err.code && err.code !== 'PICK_FAIL' && err.code !== 'NO_PICK_API' && err.code !== 'READ_FAIL') {
-        wx.showModal({ title: '导入失败', content: (err && err.message) || '备份文件无效', showCancel: false });
-      } else {
+      // 错误分类已由数据层（backup.js#ERROR_KIND）给出，页面只认 kind，不再硬编码数据层码：
+      //   cancelled —— 用户取消选文件，静默返回
+      //   retryable —— 环境 / 选择器瞬时故障，toast 提示后可重试
+      //   invalid / blocked —— 文件问题或平台配置缺失，用弹窗展示完整诊断
+      const kind = (err && err.kind) || 'invalid';
+      if (kind === 'cancelled') return;   // 用户取消选文件，静默返回
+      if (kind === 'retryable') {
         wx.showToast({ title: (err && err.message) || '选择文件失败', icon: 'none' });
+      } else {
+        // invalid（非 JSON / 非本应用 / 版本不符 / 结构异常）/ blocked（隐私未声明等）
+        // 用弹窗展示完整诊断（含文件开头预览与长度），toast 会截断长文本，故用 modal。
+        wx.showModal({ title: '导入失败', content: (err && err.message) || '备份文件无效', showCancel: false });
       }
       return;
     }

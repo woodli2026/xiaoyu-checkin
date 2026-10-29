@@ -3,15 +3,8 @@ const D = require('../../utils/domain');
 const T = require('../../utils/tasks');
 const F = require('../../utils/feed');
 const { attachTabBarSync } = require('../../utils/tabbar');
+const { modal } = require('../../utils/modal');
 const PAGE_SIZE = 30;
-function modal(options) {
-  return new Promise((resolve) => {
-    wx.showModal(Object.assign({}, options, {
-      success: (res) => resolve(res),
-      fail: () => resolve({ confirm: false })
-    }));
-  });
-}
 Page({
   behaviors: [require('../../behaviors/pin-reauth'), require('../../behaviors/parent-gate')],
   data: {

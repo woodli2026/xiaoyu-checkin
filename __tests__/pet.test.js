@@ -637,9 +637,9 @@ test('petCRUD: 本地兜底函数集与云函数集一一对应', () => {
   const cloudFns = m[1].split(',').map(x => x.trim().replace(/['"]/g, '')).filter(Boolean);
   const localFns = Object.keys(require('../miniprogram/services/local'))
     .filter(k => typeof require('../miniprogram/services/local')[k] === 'function');
-  // 本地层独有的辅助项（resetAll 测试用；exportBackup/pickBackup/restoreBackup 为本地独占 op，
+  // 本地层独有的辅助项（resetAll 测试用；exportBackup/pickBackup/restoreBackup/pointsLog 为本地独占 op，
   // 无云端对应）不计入对应关系
-  const skip = new Set(['resetAll', 'exportBackup', 'pickBackup', 'restoreBackup']);
+  const skip = new Set(['resetAll', 'exportBackup', 'pickBackup', 'restoreBackup', 'pointsLog']);
   cloudFns.forEach(fn => {
     assert.ok(localFns.indexOf(fn) >= 0, '云函数 ' + fn + ' 在本地兜底层缺失');
   });

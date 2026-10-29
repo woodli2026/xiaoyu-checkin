@@ -14,6 +14,7 @@
 //   ./local/pet.js       宠物
 //   ./local/demo.js      演示辅助（resetAll）
 //   ./local/backup.js    本地版数据导出 / 备份（仅本地模式，注册为本地独占 op）
+//   ./local/points.js    本地版 pointsLog 读取（仅本地模式，注册为本地独占 op，O2 星星收支数据源）
 const auth = require('./local/auth');
 const dashboard = require('./local/dashboard');
 const checkin = require('./local/checkin');
@@ -24,6 +25,7 @@ const feed = require('./local/feed');
 const pet = require('./local/pet');
 const demo = require('./local/demo');
 const backup = require('./local/backup');
+const points = require('./local/points');
 
 module.exports = {
   login: auth.login,
@@ -43,6 +45,7 @@ module.exports = {
   exportBackup: backup.exportBackup,   // 本地独占 op：导出本机全部数据为 JSON 文件
   pickBackup: backup.pickBackup,       // 本地独占 op：选文件 + 校验（不写入）
   restoreBackup: backup.restoreFromJson, // 本地独占 op：覆盖式恢复（页面二次确认后调用）
+  pointsLog: points.pointsLog,         // 本地独占 op：星星收支聚合读取（O2 数据源，云端当前只写不读）
   DEFAULT_PIN: auth.DEFAULT_PIN,
   PIN_LENGTH: auth.PIN_LENGTH,
   PIN_SCHEME: auth.PIN_SCHEME   // 导出供单测守卫（与 cloudfunctions/lib/pin.js 比对）

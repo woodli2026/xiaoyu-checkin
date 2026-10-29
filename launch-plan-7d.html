@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新品首周推广方案（示例）· 轻记</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --card:#ffffff; --ink:#1f2933; --muted:#697586;
+    --line:#e4e9f0; --accent:#3a7afe; --accent2:#16b8a6; --warn:#e8893b;
+    --chip:#eef3ff; --chip2:#e7f8f5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 56px}
+  .hero{background:linear-gradient(135deg,#3a7afe,#16b8a6);color:#fff;border-radius:18px;
+    padding:34px 32px;position:relative;overflow:hidden}
+  .hero h1{font-size:26px;letter-spacing:.5px;margin-bottom:8px}
+  .hero p{font-size:14px;opacity:.92;max-width:620px}
+  .badge{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.2);
+    border:1px solid rgba(255,255,255,.5);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:26px 24px;margin-top:22px}
+  .section h2{font-size:18px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .section h2 .dot{width:8px;height:18px;border-radius:4px;background:var(--accent)}
+  .pos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:680px){.pos{grid-template-columns:1fr}}
+  .poscard{border:1px solid var(--line);border-radius:12px;padding:18px;background:#fcfdff}
+  .poscard h3{font-size:14px;color:var(--accent);margin-bottom:10px}
+  .poscard ul{list-style:none}
+  .poscard li{font-size:13.5px;padding:5px 0 5px 16px;position:relative;color:var(--ink)}
+  .poscard li::before{content:"";position:absolute;left:0;top:12px;width:6px;height:6px;border-radius:50%;background:var(--accent2)}
+  .sell{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .sell span{background:var(--chip2);color:#0f7a6e;font-size:12.5px;padding:6px 12px;border-radius:8px;font-weight:600}
+  /* timeline */
+  .tl{position:relative;margin-left:8px;padding-left:26px}
+  .tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .node{position:relative;padding:0 0 22px 0}
+  .node:last-child{padding-bottom:0}
+  .node .pin{position:absolute;left:-26px;top:2px;width:18px;height:18px;border-radius:50%;
+    background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 2px var(--accent)}
+  .node.d2 .pin{background:var(--accent2)} .node.d3 .pin{background:#9b6bff}
+  .node.d4 .pin{background:var(--warn)} .node.d5 .pin{background:#ef5da8}
+  .node.d6 .pin{background:#64748b} .node.d7 .pin{background:#1f2933}
+  .node .day{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:2px}
+  .node .ttl{font-size:15px;font-weight:600;margin-bottom:4px}
+  .node .sub{font-size:13px;color:var(--muted)}
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:#f3f6fb;font-weight:600;color:#334155;white-space:nowrap}
+  td .ch{font-weight:600;color:var(--accent)}
+  td .tag{display:inline-block;background:var(--chip);color:var(--accent);font-size:11px;
+    padding:1px 7px;border-radius:6px;margin-right:4px;margin-bottom:3px}
+  tr:nth-child(even) td{background:#fcfdff}
+  .princ{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+  @media(max-width:680px){.princ{grid-template-columns:1fr}}
+  .princ div{border:1px dashed var(--line);border-radius:10px;padding:14px;background:#fcfdff}
+  .princ b{color:var(--accent);display:block;margin-bottom:4px;font-size:13.5px}
+  .princ span{font-size:12.5px;color:var(--muted)}
+  .note{font-size:12px;color:var(--muted);background:#fff8ef;border:1px solid #f3e2cc;
+    border-radius:10px;padding:12px 14px;margin-top:14px}
+  .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="badge">示例 · 虚构产品</div>
+    <h1>新品首周（7 天）推广方案</h1>
+    <p>以虚构笔记工具「轻记」演示完整结构：首周节奏时间线 + 每日行动表（渠道 / 内容主题 / 具体产出 / 观察指标）。全程只列「待观察口径」，不含任何已实现的推广效果数据。</p>
+  </div>
+
+  <!-- 产品定位 -->
+  <div class="section">
+    <h2><span class="dot"></span>一、产品定位（示例）</h2>
+    <div class="pos">
+      <div class="poscard">
+        <h3>目标用户（示例）</h3>
+        <ul>
+          <li>学生党（高中 / 大学生）：课堂速记、复习整理</li>
+          <li>职场新人：会议纪要、灵感收集</li>
+          <li>内容创作者：碎片素材沉淀</li>
+          <li>极简主义偏好者：反感广告与冗余功能</li>
+        </ul>
+      </div>
+      <div class="poscard">
+        <h3>核心卖点（示例）</h3>
+        <div class="sell">
+          <span>极简无干扰 · 打开即写</span>
+          <span>多端实时同步</span>
+          <span>AI 一键整理</span>
+          <span>免费起步</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:12px">
+          一句话定位：<b>「碎片想法，落进轻记，AI 帮你长成笔记。」</b>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 时间线 -->
+  <div class="section">
+    <h2><span class="dot"></span>二、首周节奏时间线（示例）</h2>
+    <div class="tl">
+      <div class="node d1"><span class="pin"></span>
+        <div class="day">Day 1 · 上线日</div>
+        <div class="ttl">冷启动 · 种子邀请</div>
+        <div class="sub">私域官宣，邀请首批体验者，建立反馈渠道。</div>
+      </div>
+      <div class="node d2"><span class="pin"></span>
+        <div class="day">Day 2</div>
+        <div class="ttl">内容种草 · 干货图文</div>
+        <div class="sub">在免费内容平台发使用场景干货，引导到主页。</div>
+      </div>
+      <div class="node d3"><span class="pin"></span>
+        <div class="day">Day 3</div>
+        <div class="ttl">用户证言 · 真实反馈</div>
+        <div class="sub">回收种子用户短评，沉淀首批口碑素材。</div>
+      </div>
+      <div class="node d4"><span class="pin"></span>
+        <div class="day">Day 4</div>
+        <div class="ttl">短视频破圈 · 演示种草</div>
+        <div class="sub">用 15 秒演示核心场景，蹭自然流量。</div>
+      </div>
+      <div class="node d5"><span class="pin"></span>
+        <div class="day">Day 5</div>
+        <div class="ttl">互动裂变 · 轻量打卡</div>
+        <div class="sub">在小程序内做分享激励，低成本拉新。</div>
+      </div>
+      <div class="node d6"><span class="pin"></span>
+        <div class="day">Day 6</div>
+        <div class="ttl">数据复盘 · 渠道对比</div>
+        <div class="sub">仅看观察数据，单变量对比，不外推效果。</div>
+      </div>
+      <div class="node d7"><span class="pin"></span>
+        <div class="day">Day 7</div>
+        <div class="ttl">总结放大 · 下周预告</div>
+        <div class="sub">如实输出首周数据卡片，预告下一步。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 行动表 -->
+  <div class="section">
+    <h2><span class="dot"></span>三、每日行动明细表（示例）</h2>
+    <table>
+      <thead>
+        <tr><th>日</th><th>渠道</th><th>内容主题</th><th>具体产出</th><th>观察指标（待填）</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>D1</b></td>
+          <td><span class="ch">微信朋友圈 + 私域社群</span></td>
+          <td>官宣上线 · 内测邀请</td>
+          <td>1 条朋友圈文案 + 1 张上线海报 + 1 份社群公告</td>
+          <td>朋友圈曝光/点赞、社群点击、首批注册数</td>
+        </tr>
+        <tr>
+          <td><b>D2</b></td>
+          <td><span class="ch">小红书 + 知乎（免费图文）</span></td>
+          <td>"学生党必备的 3 个记录习惯" 干货</td>
+          <td>2 篇小红书图文 + 1 条知乎回答（带主页链接）</td>
+          <td>笔记阅读量、收藏数、主页访问、注册转化</td>
+        </tr>
+        <tr>
+          <td><b>D3</b></td>
+          <td><span class="ch">种子用户私聊 + 社群</span></td>
+          <td>真实使用反馈征集</td>
+          <td>3–5 条用户短评 + 1 张证言拼图</td>
+          <td>反馈回收率、NPS 初值、次日留存率</td>
+        </tr>
+        <tr>
+          <td><b>D4</b></td>
+          <td><span class="ch">微信视频号 + 抖音（自然流量）</span></td>
+          <td>"开会 1 分钟变笔记" 15 秒演示</td>
+          <td>1 条竖版演示短视频</td>
+          <td>播放量、完播率、主页跳转数</td>
+        </tr>
+        <tr>
+          <td><b>D5</b></td>
+          <td><span class="ch">社群 + 小程序内分享</span></td>
+          <td>"7 天记录打卡" 轻活动</td>
+          <td>打卡小程序页 + 分享卡片</td>
+          <td>分享次数、邀请注册数、活动参与率</td>
+        </tr>
+        <tr>
+          <td><b>D6</b></td>
+          <td><span class="ch">内部复盘</span></td>
+          <td>首周低成本渠道 A/B 对比</td>
+          <td>1 份渠道效果对比表（仅观察数据）</td>
+          <td>各渠道 CPA、留存、内容互动率</td>
+        </tr>
+        <tr>
+          <td><b>D7</b></td>
+          <td><span class="ch">朋友圈 + 社群 + 公众号（如有）</span></td>
+          <td>首周数据卡片 + 下周预告</td>
+          <td>1 张数据卡片 + 1 篇复盘短文</td>
+          <td>复盘内容互动、下周预约关注数</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      ⚠️ 表内"观察指标"均为<b>上线后待采集的口径</b>，本方案不预设、不编造任何推广效果数字（如曝光量、转化率、ROI 等）。待真实上线后逐日回填。
+    </div>
+  </div>
+
+  <!-- 低成本验证原则 -->
+  <div class="section">
+    <h2><span class="dot"></span>四、低成本验证三原则（通用）</h2>
+    <div class="princ">
+      <div><b>先免费后付费</b><span>只用自然流量与私域，跑通转化链路后再考虑投放。</span></div>
+      <div><b>小步快跑</b><span>每日复盘、次日调整，避免一次性重投入。</span></div>
+      <div><b>单一变量</b><span>每天只测一个渠道或一种内容形式，便于归因。</span></div>
+    </div>
+  </div>
+
+  <div class="foot">本方案为「示例」模板 · 虚构产品「轻记」仅用于演示结构 · 不含任何真实推广效果数据</div>
+
+</div>
+</body>
+</html>

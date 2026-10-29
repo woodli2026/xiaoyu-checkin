@@ -34,6 +34,43 @@ const RESTORE_ERR = {
   BAD_SHAPE: '备份文件数据结构异常'
 };
 
+// 错误语义分类（**单一来源**）：把数据层错误码映射为页面可分支的语义类别，
+// 页面只认 kind，不再硬编码数据层码，消除「页面枚举错误码」的浅 seam。
+//   cancelled —— 用户主动取消，静默返回
+//   retryable —— 环境 / 选择器瞬时故障，toast 后可重试
+//   blocked   —— 平台配置缺失（如隐私未声明），需引导去后台
+//   invalid   —— 备份文件本身问题（非 JSON / 非本应用 / 版本 / 结构）
+const ERROR_KIND = {
+  CANCELLED: 'cancelled',
+  NO_PICK_API: 'retryable',
+  READ_FAIL: 'retryable',
+  PICK_FAIL: 'retryable',
+  PRIVACY_FAIL: 'blocked',
+  BAD_JSON: 'invalid',
+  NOT_XY_BACKUP: 'invalid',
+  VERSION_UNSUPPORTED: 'invalid',
+  NO_DATA: 'invalid',
+  BAD_SHAPE: 'invalid',
+  // 导出链路错误码（与恢复共用分类契约，未来页面可按 kind 分支）
+  NO_FS: 'blocked',
+  WRITE_FAIL: 'invalid',
+  DELIVER_FAIL: 'retryable',
+  NO_DELIVER_API: 'blocked'
+};
+
+// 构造统一失败结果 { ok:false, code, kind, message }（纯函数，可单测）。
+// message 优先级：显式传入 > 校验类诊断（含文件开头预览 / 长度）> RESTORE_ERR 兜底。
+function fail(code, extra) {
+  extra = extra || {};
+  let message = extra.message;
+  if (message == null) {
+    message = (extra.preview != null || extra.len != null)
+      ? restoreErrorMessage({ code, preview: extra.preview, len: extra.len })
+      : (RESTORE_ERR[code] || '备份文件无效');
+  }
+  return { ok: false, code, kind: ERROR_KIND[code] || 'invalid', message };
+}
+
 // 收集全部用户数据（纯函数）。返回 { data, counts }
 function collectData() {
   const data = {};
@@ -116,7 +153,7 @@ function validatePayload(json) {
 function pickBackup() {
   return new Promise((resolve) => {
     if (typeof wx === 'undefined' || typeof wx.chooseMessageFile !== 'function') {
-      resolve({ ok: false, code: 'NO_PICK_API', message: '当前环境不支持选择文件' });
+      resolve(fail('NO_PICK_API', { message: '当前环境不支持选择文件' }));
       return;
     }
     const doPick = () => {
@@ -126,12 +163,12 @@ function pickBackup() {
         type: 'file',
         success: (res) => {
           const f = res.tempFiles && res.tempFiles[0];
-          if (!f) { resolve({ ok: false, code: 'CANCELLED' }); return; }
+          if (!f) { resolve(fail('CANCELLED')); return; }
           let json;
           try {
             json = wx.getFileSystemManager().readFileSync(f.path, 'utf8');
           } catch (e) {
-            resolve({ ok: false, code: 'READ_FAIL', message: '读取文件失败' });
+            resolve(fail('READ_FAIL', { message: '读取文件失败' }));
             return;
           }
           const v = validatePayload(json);
@@ -139,7 +176,7 @@ function pickBackup() {
             // 诊断：把读到的原始内容前 200 字符打到控制台，便于在开发者工具 / 真机 vConsole 定位「到底读到了什么」
             console.info('[backup] import parse fail:', v.code, 'len=', json && json.length,
               'head=', String(json).slice(0, 200));
-            resolve({ ok: false, code: v.code, message: restoreErrorMessage(v) });
+            resolve(fail(v.code, { preview: v.preview, len: v.len }));
             return;
           }
           resolve({
@@ -154,10 +191,10 @@ function pickBackup() {
           // 只把「用户主动取消」当静默；真实失败必须带上 errMsg 浮出水面，否则就是“点了没反应”
           const msg = (err && err.errMsg) || '';
           if (/cancel/i.test(msg)) {
-            resolve({ ok: false, code: 'CANCELLED' });
+            resolve(fail('CANCELLED'));
           } else {
             console.info('[backup] chooseMessageFile fail:', msg);
-            resolve({ ok: false, code: 'PICK_FAIL', message: '打开文件选择器失败：' + (msg || '未知原因') });
+            resolve(fail('PICK_FAIL', { message: '打开文件选择器失败：' + (msg || '未知原因') }));
           }
         }
       });
@@ -169,16 +206,14 @@ function pickBackup() {
         success: doPick,
         fail: (err) => {
           const msg = (err && err.errMsg) || '';
-          if (/cancel/i.test(msg)) { resolve({ ok: false, code: 'CANCELLED' }); return; }
+          if (/cancel/i.test(msg)) { resolve(fail('CANCELLED')); return; }
           console.info('[backup] requirePrivacyAuthorize fail:', msg);
           const notDeclared = /112|not declared|隐私|privacy/i.test(msg);
-          resolve({
-            ok: false,
-            code: 'PRIVACY_FAIL',
+          resolve(fail('PRIVACY_FAIL', {
             message: notDeclared
               ? '小程序后台《用户隐私保护指引》需补充声明「选中的文件」类型后才能选择备份文件'
               : '隐私授权未通过：' + msg
-          });
+          }));
         }
       });
       return;
@@ -194,7 +229,7 @@ function pickBackup() {
 function restoreFromJson(params) {
   const json = (params && typeof params === 'object' && params.json !== undefined) ? params.json : params;
   const v = validatePayload(json);
-  if (!v.ok) return { ok: false, code: v.code, message: restoreErrorMessage(v) };
+  if (!v.ok) return fail(v.code, { preview: v.preview, len: v.len });
   const data = v.payload.data;
   for (const key of DATA_KEYS) {
     if (data[key] !== undefined) s.write(s.KEYS[key], data[key]);
@@ -213,14 +248,14 @@ async function exportBackup(opts) {
   opts = opts || {};
   const json = buildPayload({ appVersion: opts.appVersion });
   const fs = (typeof wx !== 'undefined' && wx.getFileSystemManager) ? wx.getFileSystemManager() : null;
-  if (!fs) return { ok: false, code: 'NO_FS', message: '当前环境不支持文件操作' };
+  if (!fs) return fail('NO_FS', { message: '当前环境不支持文件操作' });
   const stamp = formatStamp(new Date());
   const fileName = `雨宝记数据备份_${stamp}.json`;
   const filePath = `${wx.env.USER_DATA_PATH}/${fileName}`;
   try {
     fs.writeFileSync(filePath, json, 'utf8');
   } catch (e) {
-    return { ok: false, code: 'WRITE_FAIL', message: (e && e.message) || '写入文件失败' };
+    return fail('WRITE_FAIL', { message: (e && e.message) || '写入文件失败' });
   }
   return deliverFile(filePath, fileName);
 }
@@ -246,16 +281,16 @@ function fallbackSave(filePath, resolve) {
     wx.saveFileToDisk({
       filePath,
       success: () => resolve({ ok: true, filePath }),
-      fail: () => resolve({ ok: false, code: 'DELIVER_FAIL', message: '无法分享或保存文件' })
+      fail: () => resolve(fail('DELIVER_FAIL', { message: '无法分享或保存文件' }))
     });
   } else {
-    resolve({ ok: false, code: 'NO_DELIVER_API', message: '当前环境不支持导出文件' });
+    resolve(fail('NO_DELIVER_API', { message: '当前环境不支持导出文件' }));
   }
 }
 
 module.exports = {
-  DATA_KEYS, BACKUP_VERSION, ARRAY_KEYS, RESTORE_ERR,
+  DATA_KEYS, BACKUP_VERSION, ARRAY_KEYS, RESTORE_ERR, ERROR_KIND,
   collectData, buildPayload, validatePayload, exportBackup,
-  pickBackup, restoreFromJson,
+  pickBackup, restoreFromJson, fail,
   formatStamp
 };
